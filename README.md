@@ -1,1 +1,1 @@
-# USTC-Database---Learning-Exam-Management-System
+# ustc-database-learning-platform
