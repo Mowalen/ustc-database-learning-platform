@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from app.db.session import Base
 
 if TYPE_CHECKING:
     from .user import User
@@ -24,4 +24,3 @@ class Announcement(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     creator: Mapped["User"] = relationship(back_populates="announcements")
-

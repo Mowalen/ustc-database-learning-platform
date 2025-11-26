@@ -1,5 +1,5 @@
-from .base import Base
-from .role import Role, RoleName
+from app.db.session import Base
+from .role import Role
 from .user import User
 from .course import Course, CourseCategory
 from .enrollment import CourseEnrollment, EnrollmentStatus
@@ -10,7 +10,6 @@ from .announcement import Announcement
 __all__ = [
     "Base",
     "Role",
-    "RoleName",
     "User",
     "Course",
     "CourseCategory",

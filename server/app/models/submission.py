@@ -8,7 +8,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from app.db.session import Base
 
 if TYPE_CHECKING:
     from .task import Task
@@ -39,4 +39,3 @@ class Submission(Base):
 
     task: Mapped["Task"] = relationship(back_populates="submissions")
     student: Mapped["User"] = relationship(back_populates="submissions")
-

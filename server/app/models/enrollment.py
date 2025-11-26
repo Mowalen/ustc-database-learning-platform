@@ -8,7 +8,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from app.db.session import Base
 
 if TYPE_CHECKING:
     from .course import Course
@@ -32,4 +32,3 @@ class CourseEnrollment(Base):
 
     course: Mapped["Course"] = relationship(back_populates="enrollments")
     student: Mapped["User"] = relationship(back_populates="enrollments")
-

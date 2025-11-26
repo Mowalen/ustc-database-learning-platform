@@ -5,14 +5,14 @@ from typing import Iterable
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from app import models
+from app.models import Submission, Task
 
 
 async def get_scores_for_student(session, student_id: int) -> list[dict]:
     stmt = (
-        select(models.Submission, models.Task)
-        .join(models.Task, models.Submission.task_id == models.Task.id)
-        .where(models.Submission.student_id == student_id)
+        select(Submission, Task)
+        .join(Task, Submission.task_id == Task.id)
+        .where(Submission.student_id == student_id)
     )
     result = await session.execute(stmt)
     rows = result.all()
@@ -38,9 +38,9 @@ async def get_scores_for_student(session, student_id: int) -> list[dict]:
 
 async def get_scores_for_course(session, course_id: int) -> list[dict]:
     stmt = (
-        select(models.Submission, models.Task)
-        .join(models.Task, models.Submission.task_id == models.Task.id)
-        .where(models.Task.course_id == course_id)
+        select(Submission, Task)
+        .join(Task, Submission.task_id == Task.id)
+        .where(Task.course_id == course_id)
     )
     result = await session.execute(stmt)
     rows = result.all()
@@ -79,4 +79,3 @@ async def export_scores_csv(session, course_id: int) -> str:
 def _coerce_to_strings(rows: Iterable[dict]) -> Iterable[dict]:
     for row in rows:
         yield {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
-

@@ -1,32 +1,28 @@
-import hashlib
-
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from app import models
-from app.schemas import AnnouncementCreate, UserCreate, UserUpdate
+from app.core.security import get_password_hash
+from app.models import Announcement, Course, Role, User
+from app.schemas.announcements import AnnouncementCreate
+from app.schemas.user import UserCreate, UserUpdate
 
 
-def _hash_password(raw: str) -> str:
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-async def _get_role(session, role_id: int) -> models.Role:
-    role = await session.get(models.Role, role_id)
+async def _get_role(session, role_id: int) -> Role:
+    role = await session.get(Role, role_id)
     if not role:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role_id")
     return role
 
 
-async def create_user(session, payload: UserCreate) -> models.User:
+async def create_user(session, payload: UserCreate) -> User:
     await _get_role(session, payload.role_id)
 
-    stmt = select(models.User).where(models.User.username == payload.username)
+    stmt = select(User).where(User.username == payload.username)
     existing = (await session.execute(stmt)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
 
-    user = models.User(
+    user = User(
         username=payload.username,
         full_name=payload.full_name,
         email=payload.email,
@@ -34,7 +30,7 @@ async def create_user(session, payload: UserCreate) -> models.User:
         role_id=payload.role_id,
         avatar_url=payload.avatar_url,
         is_active=payload.is_active,
-        password_hash=_hash_password(payload.password),
+        password_hash=get_password_hash(payload.password),
     )
     session.add(user)
     await session.commit()
@@ -42,8 +38,8 @@ async def create_user(session, payload: UserCreate) -> models.User:
     return user
 
 
-async def update_user(session, user_id: int, payload: UserUpdate) -> models.User:
-    user = await session.get(models.User, user_id)
+async def update_user(session, user_id: int, payload: UserUpdate) -> User:
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -61,15 +57,15 @@ async def update_user(session, user_id: int, payload: UserUpdate) -> models.User
     if payload.is_active is not None:
         user.is_active = payload.is_active
     if payload.password:
-        user.password_hash = _hash_password(payload.password)
+        user.password_hash = get_password_hash(payload.password)
 
     await session.commit()
     await session.refresh(user)
     return user
 
 
-async def deactivate_user(session, user_id: int) -> models.User:
-    user = await session.get(models.User, user_id)
+async def deactivate_user(session, user_id: int) -> User:
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -79,8 +75,8 @@ async def deactivate_user(session, user_id: int) -> models.User:
     return user
 
 
-async def deactivate_course(session, course_id: int) -> models.Course:
-    course = await session.get(models.Course, course_id)
+async def deactivate_course(session, course_id: int) -> Course:
+    course = await session.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
@@ -90,12 +86,12 @@ async def deactivate_course(session, course_id: int) -> models.Course:
     return course
 
 
-async def create_announcement(session, payload: AnnouncementCreate) -> models.Announcement:
-    creator = await session.get(models.User, payload.created_by)
+async def create_announcement(session, payload: AnnouncementCreate) -> Announcement:
+    creator = await session.get(User, payload.created_by)
     if not creator:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Creator not found")
 
-    announcement = models.Announcement(
+    announcement = Announcement(
         title=payload.title, content=payload.content, created_by=payload.created_by, is_active=payload.is_active
     )
     session.add(announcement)
@@ -104,10 +100,10 @@ async def create_announcement(session, payload: AnnouncementCreate) -> models.An
     return announcement
 
 
-async def list_announcements(session, include_inactive: bool = False) -> list[models.Announcement]:
-    stmt = select(models.Announcement)
+async def list_announcements(session, include_inactive: bool = False) -> list[Announcement]:
+    stmt = select(Announcement)
     if not include_inactive:
-        stmt = stmt.where(models.Announcement.is_active.is_(True))
+        stmt = stmt.where(Announcement.is_active.is_(True))
 
-    result = await session.execute(stmt.order_by(models.Announcement.created_at.desc()))
+    result = await session.execute(stmt.order_by(Announcement.created_at.desc()))
     return list(result.scalars().all())

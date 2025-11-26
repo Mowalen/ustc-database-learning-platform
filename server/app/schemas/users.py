@@ -4,8 +4,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.models import RoleName
-
 
 class UserBase(BaseModel):
     username: str
@@ -33,8 +31,7 @@ class UserUpdate(BaseModel):
 
 class UserOut(UserBase):
     id: int
-    role_name: Optional[RoleName] = None
+    role_name: Optional[str] = None
 
     class Config:
         from_attributes = True
-

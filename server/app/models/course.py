@@ -1,50 +1,34 @@
-from __future__ import annotations
-
-from datetime import datetime
-from typing import Optional, TYPE_CHECKING
-
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
-from .base import Base
-
-if TYPE_CHECKING:
-    from .user import User
-    from .enrollment import CourseEnrollment
-    from .task import Task
-
+from app.db.session import Base
 
 class CourseCategory(Base):
     __tablename__ = "course_categories"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True)
-    description: Mapped[Optional[str]] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, index=True, nullable=False)
+    description = Column(String(255))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    courses: Mapped[list["Course"]] = relationship(back_populates="category")
-
+    courses = relationship("Course", back_populates="category")
 
 class Course(Base):
     __tablename__ = "courses"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    title: Mapped[str] = mapped_column(String(100))
-    description: Mapped[Optional[str]] = mapped_column(Text)
-    cover_url: Mapped[Optional[str]] = mapped_column(String(255))
-    category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("course_categories.id"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String(100), index=True, nullable=False)
+    description = Column(Text)
+    cover_url = Column(String(255))
+    category_id = Column(Integer, ForeignKey("course_categories.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
 
-    teacher: Mapped["User"] = relationship(back_populates="courses_taught", foreign_keys=[teacher_id])
-    category: Mapped[Optional["CourseCategory"]] = relationship(back_populates="courses")
-    enrollments: Mapped[list["CourseEnrollment"]] = relationship(back_populates="course")
-    tasks: Mapped[list["Task"]] = relationship(back_populates="course")
+    teacher = relationship("User", backref="courses_taught")
+    category = relationship("CourseCategory", back_populates="courses")
+    sections = relationship("CourseSection", back_populates="course", cascade="all, delete-orphan")
+    enrollments = relationship("CourseEnrollment", back_populates="course", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="course", cascade="all, delete-orphan")
