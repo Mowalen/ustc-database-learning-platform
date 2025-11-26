@@ -30,3 +30,5 @@ class Course(Base):
     teacher = relationship("User", backref="courses_taught")
     category = relationship("CourseCategory", back_populates="courses")
     sections = relationship("CourseSection", back_populates="course", cascade="all, delete-orphan")
+    enrollments = relationship("CourseEnrollment", back_populates="course", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="course", cascade="all, delete-orphan")

@@ -1,19 +1,14 @@
-from fastapi import FastAPI
-import sys
+from contextlib import asynccontextmanager
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import sys
+
+from fastapi import FastAPI
+from sqlalchemy import select
 
 from app.core.config import settings
-
+from app.db.session import Base, SessionLocal, engine
 from app.middleware.operation_log import OperationLogMiddleware
-
-from app.db.session import engine, Base
-from contextlib import asynccontextmanager
-
-from app.db.session import engine, Base, SessionLocal
 from app.models.role import Role
-from sqlalchemy import select
-from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -37,11 +32,7 @@ async def lifespan(app: FastAPI):
             
     yield
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
-)
+app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json", lifespan=lifespan)
 
 app.add_middleware(OperationLogMiddleware)
 
@@ -49,12 +40,18 @@ app.add_middleware(OperationLogMiddleware)
 async def root():
     return {"message": "Welcome to USTC Database Learning Platform API"}
 
-from app.routers import auth, users, courses, sections
+from app.routers import auth, courses, sections, users
+from app.routers import admin as admin_router
+from app.routers import enrollments, scores, tasks
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(courses.router, prefix=f"{settings.API_V1_STR}/courses", tags=["courses"])
-app.include_router(sections.router, prefix=settings.API_V1_STR, tags=["sections"])  # No prefix because it has mixed paths
+app.include_router(sections.router, prefix=settings.API_V1_STR, tags=["sections"])
+app.include_router(enrollments.router, prefix=settings.API_V1_STR, tags=["enrollments"])
+app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["tasks"])
+app.include_router(scores.router, prefix=settings.API_V1_STR, tags=["scores"])
+app.include_router(admin_router.router, prefix=settings.API_V1_STR, tags=["admin"])
 
 if __name__ == "__main__":
     import uvicorn

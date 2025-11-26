@@ -19,4 +19,6 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     role = relationship("Role", back_populates="users")
-    # Add other relationships as needed (e.g., courses, enrollments, submissions)
+    enrollments = relationship("CourseEnrollment", back_populates="student", cascade="all, delete-orphan")
+    submissions = relationship("Submission", back_populates="student", cascade="all, delete-orphan")
+    announcements = relationship("Announcement", back_populates="creator", cascade="all, delete-orphan")
