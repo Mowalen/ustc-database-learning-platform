@@ -1,9 +1,9 @@
-import asyncio
+import pytest
 import httpx
-import sys
 
-BASE_URL = "http://localhost:8002/api/v1"
+BASE_URL = "http://localhost:8000/api/v1"
 
+@pytest.mark.asyncio
 async def test_flow():
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=10.0) as client:
         # 1. Register Teacher
@@ -90,6 +90,3 @@ async def test_flow():
         print(f"Sections found: {len(sections)}")
 
         print("Verification Successful!")
-
-if __name__ == "__main__":
-    asyncio.run(test_flow())
