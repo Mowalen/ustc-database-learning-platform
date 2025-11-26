@@ -90,5 +90,3 @@ uv run pytest
 
 *Documentation for the frontend will be added once initialization is complete.*
 
-## 📄 License
-[MIT License](LICENSE)
