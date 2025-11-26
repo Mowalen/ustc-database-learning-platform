@@ -49,9 +49,12 @@ app.add_middleware(OperationLogMiddleware)
 async def root():
     return {"message": "Welcome to USTC Database Learning Platform API"}
 
-from app.api.v1.api import api_router
+from app.routers import auth, users, courses, sections
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
+app.include_router(courses.router, prefix=f"{settings.API_V1_STR}/courses", tags=["courses"])
+app.include_router(sections.router, prefix=settings.API_V1_STR, tags=["sections"])  # No prefix because it has mixed paths
 
 if __name__ == "__main__":
     import uvicorn
