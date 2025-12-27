@@ -125,3 +125,66 @@ async def test_list_announcements(client: AsyncClient, admin_headers: Dict[str, 
     data = response.json()
     assert isinstance(data, list)
     assert len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_list_users(client: AsyncClient, admin_headers: Dict[str, str]):
+    """测试管理员获取用户列表"""
+    response = await client.get(
+        "/admin/users",
+        headers=admin_headers
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    # Should have at least the admin user
+    assert len(data) > 0
+    
+    # Test with filters
+    response = await client.get(
+        "/admin/users?role_id=1&skip=0&limit=10",
+        headers=admin_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+
+@pytest.mark.asyncio
+async def test_list_all_courses(client: AsyncClient, admin_headers: Dict[str, str]):
+    """测试管理员获取所有课程列表"""
+    response = await client.get(
+        "/admin/courses",
+        headers=admin_headers
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    
+    # Test with include_inactive filter
+    response = await client.get(
+        "/admin/courses?include_inactive=true&skip=0&limit=10",
+        headers=admin_headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+
+@pytest.mark.asyncio
+async def test_deactivate_course(client: AsyncClient, admin_headers: Dict[str, str], test_course: Dict):
+    """测试管理员下架课程"""
+    course_id = test_course["id"]
+    
+    response = await client.delete(
+        f"/admin/courses/{course_id}",
+        headers=admin_headers
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["course_id"] == course_id
+    assert data["is_active"] == False
+

@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import datetime
-from app.schemas.role import Role
+# from app.schemas.role import Role  # 暂时注释掉，避免循环导入和异步加载问题
 
 class UserBase(BaseModel):
     username: str
@@ -23,7 +23,7 @@ class UserResponse(UserBase):
     role_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    role: Optional[Role] = None
+    # role: Optional[Role] = None  # 暂时注释掉，避免异步加载问题
+    
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True

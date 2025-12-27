@@ -3,9 +3,10 @@ import os
 import sys
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from app.core.config import settings
+from app.core.config import settings, BASE_DIR
 from app.db.session import Base, SessionLocal, engine
 from app.middleware.operation_log import OperationLogMiddleware
 from app.models.role import Role
@@ -29,6 +30,10 @@ async def lifespan(app: FastAPI):
             session.add_all(roles_to_create)
             await session.commit()
             print("Roles seeded.")
+    
+    # 确保uploads目录存在
+    uploads_dir = os.path.join(str(BASE_DIR), "uploads")
+    os.makedirs(uploads_dir, exist_ok=True)
             
     yield
 
@@ -42,7 +47,7 @@ async def root():
 
 from app.routers import auth, courses, sections, users
 from app.routers import admin as admin_router
-from app.routers import enrollments, scores, tasks
+from app.routers import enrollments, scores, tasks, upload
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
@@ -52,6 +57,11 @@ app.include_router(enrollments.router, prefix=settings.API_V1_STR, tags=["enroll
 app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["tasks"])
 app.include_router(scores.router, prefix=settings.API_V1_STR, tags=["scores"])
 app.include_router(admin_router.router, prefix=settings.API_V1_STR, tags=["admin"])
+app.include_router(upload.router, prefix=f"{settings.API_V1_STR}/upload", tags=["upload"])
+
+# 挂载静态文件服务，使上传的文件可以被访问
+uploads_dir = os.path.join(str(BASE_DIR), "uploads")
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 if __name__ == "__main__":
     import uvicorn

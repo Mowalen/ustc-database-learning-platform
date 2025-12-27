@@ -41,3 +41,42 @@ async def create_announcement(payload: AnnouncementCreate, db: AsyncSession = De
 @router.get("/announcements", response_model=list[AnnouncementOut])
 async def list_announcements(include_inactive: bool = False, db: AsyncSession = Depends(get_db)):
     return await crud_admin.list_announcements(db, include_inactive)
+
+
+@router.get("/users", response_model=list[UserResponse])
+async def list_users(
+    role_id: int | None = None,
+    include_inactive: bool = False,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    获取用户列表（管理员）
+    
+    - role_id: 按角色筛选（1=student, 2=teacher, 3=admin）
+    - include_inactive: 是否包含已停用用户
+    - skip: 分页偏移量
+    - limit: 分页限制（默认100）
+    """
+    users = await crud_admin.list_users(db, role_id, include_inactive, skip, limit)
+    return [UserResponse.model_validate(user, from_attributes=True) for user in users]
+
+
+@router.get("/courses")
+async def list_all_courses(
+    include_inactive: bool = False,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    获取所有课程列表（管理员视图）
+    
+    - include_inactive: 是否包含已下架课程
+    - skip: 分页偏移量
+    - limit: 分页限制（默认100）
+    """
+    from app.schemas.course import Course as CourseSchema
+    courses = await crud_admin.list_all_courses(db, include_inactive, skip, limit)
+    return [CourseSchema.model_validate(course, from_attributes=True) for course in courses]

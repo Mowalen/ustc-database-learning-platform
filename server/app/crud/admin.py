@@ -35,7 +35,15 @@ async def create_user(session, payload: UserCreate) -> User:
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return user
+    
+    # 重新查询以加载关系
+    from sqlalchemy.orm import selectinload
+    result = await session.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .filter(User.id == user.id)
+    )
+    return result.scalars().first()
 
 
 async def update_user(session, user_id: int, payload: UserUpdate) -> User:
@@ -61,7 +69,15 @@ async def update_user(session, user_id: int, payload: UserUpdate) -> User:
 
     await session.commit()
     await session.refresh(user)
-    return user
+    
+    # 重新查询以加载关系
+    from sqlalchemy.orm import selectinload
+    result = await session.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .filter(User.id == user.id)
+    )
+    return result.scalars().first()
 
 
 async def deactivate_user(session, user_id: int) -> User:
@@ -72,7 +88,15 @@ async def deactivate_user(session, user_id: int) -> User:
     user.is_active = False
     await session.commit()
     await session.refresh(user)
-    return user
+    
+    # 重新查询以加载关系
+    from sqlalchemy.orm import selectinload
+    result = await session.execute(
+        select(User)
+        .options(selectinload(User.role))
+        .filter(User.id == user.id)
+    )
+    return result.scalars().first()
 
 
 async def deactivate_course(session, course_id: int) -> Course:
@@ -106,4 +130,54 @@ async def list_announcements(session, include_inactive: bool = False) -> list[An
         stmt = stmt.where(Announcement.is_active.is_(True))
 
     result = await session.execute(stmt.order_by(Announcement.created_at.desc()))
+    return list(result.scalars().all())
+
+
+async def list_users(session, role_id: int | None = None, include_inactive: bool = False, skip: int = 0, limit: int = 100) -> list[User]:
+    """
+    获取用户列表
+    
+    Args:
+        session: 数据库会话
+        role_id: 按角色筛选（可选）
+        include_inactive: 是否包含已停用用户
+        skip: 分页偏移量
+        limit: 分页限制
+    
+    Returns:
+        用户列表
+    """
+    stmt = select(User).options(selectinload(User.role))
+    
+    if role_id is not None:
+        stmt = stmt.where(User.role_id == role_id)
+    
+    if not include_inactive:
+        stmt = stmt.where(User.is_active.is_(True))
+    
+    stmt = stmt.order_by(User.created_at.desc()).offset(skip).limit(limit)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_all_courses(session, include_inactive: bool = False, skip: int = 0, limit: int = 100) -> list[Course]:
+    """
+    获取所有课程列表（管理员视图）
+    
+    Args:
+        session: 数据库会话
+        include_inactive: 是否包含已下架课程
+        skip: 分页偏移量
+        limit: 分页限制
+    
+    Returns:
+        课程列表
+    """
+    stmt = select(Course)
+    
+    if not include_inactive:
+        stmt = stmt.where(Course.is_active.is_(True))
+    
+    stmt = stmt.order_by(Course.created_at.desc()).offset(skip).limit(limit)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
