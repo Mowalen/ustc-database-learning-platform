@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from app.models import Course, CourseEnrollment, EnrollmentStatus, Submission, SubmissionStatus, Task, TaskType
+from app.models import Course, CourseEnrollment, EnrollmentStatus, Submission, SubmissionStatus, Task, TaskType, User
 from app.schemas.submissions import GradeUpdate, SubmissionCreate
 from app.schemas.tasks import TaskCreate
 
@@ -69,8 +69,11 @@ async def submit_task(session, task_id: int, payload: SubmissionCreate) -> Submi
     await _get_student_enrollment(session, task.course_id, payload.student_id)
 
     now = datetime.now(timezone.utc)
+    deadline = task.deadline
+    if deadline and deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
     status_value = SubmissionStatus.SUBMITTED
-    if task.deadline and now > task.deadline:
+    if deadline and now > deadline:
         status_value = SubmissionStatus.LATE
 
     stmt = select(Submission).where(Submission.task_id == task_id, Submission.student_id == payload.student_id)
@@ -98,13 +101,20 @@ async def submit_task(session, task_id: int, payload: SubmissionCreate) -> Submi
     return submission
 
 
-async def grade_submission(session, submission_id: int, payload: GradeUpdate) -> Submission:
-    stmt = select(Submission).options(joinedload(Submission.task)).where(Submission.id == submission_id)
+async def get_submission_with_course(session, submission_id: int) -> Submission:
+    stmt = (
+        select(Submission)
+        .options(joinedload(Submission.task).joinedload(Task.course))
+        .where(Submission.id == submission_id)
+    )
     result = await session.execute(stmt)
     submission = result.scalar_one_or_none()
     if not submission:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Submission not found")
+    return submission
 
+
+async def apply_grade(session, submission: Submission, payload: GradeUpdate) -> Submission:
     submission.score = payload.score
     submission.feedback = payload.feedback
     submission.status = payload.status or SubmissionStatus.GRADED
@@ -113,3 +123,14 @@ async def grade_submission(session, submission_id: int, payload: GradeUpdate) ->
     await session.commit()
     await session.refresh(submission)
     return submission
+
+
+async def list_submissions(session, task_id: int) -> list[Submission]:
+    stmt = (
+        select(Submission)
+        .options(joinedload(Submission.student).joinedload(User.role))
+        .where(Submission.task_id == task_id)
+        .order_by(Submission.submitted_at.desc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())

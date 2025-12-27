@@ -14,6 +14,6 @@ class CourseSection(Base):
     video_url = Column(String(255))
     order_index = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     course = relationship("Course", back_populates="sections")

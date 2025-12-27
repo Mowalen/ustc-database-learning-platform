@@ -1,7 +1,7 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.routers import get_current_active_user
+from app.routers import get_current_active_user, require_roles
 from app.crud.crud_course import course as crud_course, category as crud_category
 from app.schemas.course import Course, CourseCreate, CourseUpdate, CourseCategory, CourseCategoryCreate
 from app.models.user import User
@@ -22,7 +22,7 @@ async def create_course(
     *,
     db: AsyncSession = Depends(get_db),
     course_in: CourseCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_roles(2, 3)),
 ) -> Any:
     # TODO: Check if user is teacher
     # if current_user.role_id != TEACHER_ROLE_ID:
@@ -64,8 +64,8 @@ async def update_course(
     course = await crud_course.get(db, id=id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.teacher_id != current_user.id: # and not superuser
-         raise HTTPException(status_code=400, detail="Not enough permissions")
+    if current_user.role_id != 3 and course.teacher_id != current_user.id: # and not superuser
+         raise HTTPException(status_code=403, detail="Not enough permissions")
     course = await crud_course.update(db, db_obj=course, obj_in=course_in)
     return course
 
@@ -79,8 +79,8 @@ async def delete_course(
     course = await crud_course.get(db, id=id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.teacher_id != current_user.id:
-         raise HTTPException(status_code=400, detail="Not enough permissions")
+    if current_user.role_id != 3 and course.teacher_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not enough permissions")
     course = await crud_course.remove(db, id=id)
     return course
 
@@ -98,7 +98,7 @@ async def create_category(
     *,
     db: AsyncSession = Depends(get_db),
     category_in: CourseCategoryCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_roles(3)),
 ) -> Any:
     # Check admin permission
     return await crud_category.create(db, obj_in=category_in)

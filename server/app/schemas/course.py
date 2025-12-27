@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
@@ -14,7 +14,8 @@ class CourseCategory(CourseCategoryBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
 class CourseBase(BaseModel):
     title: str
@@ -34,7 +35,7 @@ class Course(CourseBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_active: bool
-    # category: Optional[CourseCategory] = None  # 暂时注释掉，避免异步加载问题
+    category: Optional[CourseCategory] = None
 
-    model_config = ConfigDict(from_attributes=True)
-
+    class Config:
+        from_attributes = True

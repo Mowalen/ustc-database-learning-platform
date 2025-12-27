@@ -7,6 +7,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from app.models import SubmissionStatus
+from app.schemas.users import UserOut
 
 
 class SubmissionCreate(BaseModel):
@@ -36,3 +37,9 @@ class GradeUpdate(BaseModel):
     feedback: Optional[str] = None
     status: Optional[SubmissionStatus] = SubmissionStatus.GRADED
 
+
+class SubmissionWithStudent(SubmissionOut):
+    student: UserOut
+
+    class Config:
+        from_attributes = True

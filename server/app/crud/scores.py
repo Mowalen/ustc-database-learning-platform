@@ -29,6 +29,7 @@ async def get_scores_for_student(session, student_id: int) -> list[dict]:
                 "task_title": task.title,
                 "student_id": submission.student_id,
                 "score": submission.score,
+                "feedback": submission.feedback,
                 "status": submission.status,
                 "graded_at": submission.graded_at,
             }
@@ -57,6 +58,7 @@ async def get_scores_for_course(session, course_id: int) -> list[dict]:
                 "task_title": task.title,
                 "student_id": submission.student_id,
                 "score": submission.score,
+                "feedback": submission.feedback,
                 "status": submission.status,
                 "graded_at": submission.graded_at,
             }
