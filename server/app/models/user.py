@@ -16,9 +16,9 @@ class User(Base):
     avatar_url = Column(String(255))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    role = relationship("Role", back_populates="users")
+    role = relationship("Role", back_populates="users", lazy="joined")
     enrollments = relationship("CourseEnrollment", back_populates="student", cascade="all, delete-orphan")
     submissions = relationship("Submission", back_populates="student", cascade="all, delete-orphan")
     announcements = relationship("Announcement", back_populates="creator", cascade="all, delete-orphan")

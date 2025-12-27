@@ -107,3 +107,19 @@ async def list_announcements(session, include_inactive: bool = False) -> list[An
 
     result = await session.execute(stmt.order_by(Announcement.created_at.desc()))
     return list(result.scalars().all())
+
+
+async def list_users(
+    session,
+    skip: int = 0,
+    limit: int = 100,
+    role_id: int | None = None,
+    is_active: bool | None = None,
+) -> list[User]:
+    stmt = select(User).order_by(User.id.asc()).offset(skip).limit(limit)
+    if role_id is not None:
+        stmt = stmt.where(User.role_id == role_id)
+    if is_active is not None:
+        stmt = stmt.where(User.is_active.is_(is_active))
+    result = await session.execute(stmt)
+    return list(result.scalars().all())

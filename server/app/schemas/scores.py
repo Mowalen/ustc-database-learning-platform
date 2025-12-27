@@ -16,6 +16,6 @@ class ScoreOut(BaseModel):
     task_title: str
     student_id: int
     score: Optional[Decimal]
+    feedback: Optional[str] = None
     status: SubmissionStatus
     graded_at: Optional[datetime] = None
-

@@ -31,8 +31,8 @@ async def create_section(
     course = await crud_course.get(db, id=course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
-    if course.teacher_id != current_user.id:
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+    if current_user.role_id != 3 and course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
     
     # Ensure course_id matches
     if section_in.course_id != course_id:
@@ -64,8 +64,8 @@ async def update_section(
         raise HTTPException(status_code=404, detail="Section not found")
     
     course = await crud_course.get(db, id=section.course_id)
-    if course.teacher_id != current_user.id:
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+    if current_user.role_id != 3 and course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
         
     section = await crud_section.update(db, db_obj=section, obj_in=section_in)
     return section
@@ -82,8 +82,8 @@ async def delete_section(
         raise HTTPException(status_code=404, detail="Section not found")
         
     course = await crud_course.get(db, id=section.course_id)
-    if course.teacher_id != current_user.id:
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+    if current_user.role_id != 3 and course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
         
     section = await crud_section.remove(db, id=id)
     return section

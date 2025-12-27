@@ -10,7 +10,7 @@ class CourseCategory(Base):
     name = Column(String(100), unique=True, index=True, nullable=False)
     description = Column(String(255))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     courses = relationship("Course", back_populates="category")
 
@@ -24,7 +24,7 @@ class Course(Base):
     cover_url = Column(String(255))
     category_id = Column(Integer, ForeignKey("course_categories.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
 
     teacher = relationship("User", backref="courses_taught")
