@@ -48,7 +48,7 @@
       <header class="topbar">
         <div>
           <h1>{{ pageTitle }}</h1>
-          <p>专注数据库课程的教学流程与学习体验。</p>
+          <p>{{ pageDesc }}</p>
         </div>
         <div class="topbar__actions">
           <el-button class="mobile-toggle" @click="toggleMenu">菜单</el-button>
@@ -74,13 +74,14 @@ const mobileMenuOpen = ref(false);
 
 const menuItems = [
   { path: "/", label: "仪表盘", roles: [1, 2, 3] },
-  { path: "/courses", label: "课程中心", roles: [1, 2, 3] },
+  { path: "/courses", label: "课程管理", roles: [1, 2, 3] },
   { path: "/teaching", label: "我的授课", roles: [2] },
   { path: "/enrollments", label: "我的选课", roles: [1] },
   { path: "/tasks", label: "作业与考试", roles: [] },
   { path: "/scores", label: "成绩反馈", roles: [] },
-  { path: "/announcements", label: "公告看板", roles: [] },
-  { path: "/admin", label: "管理后台", roles: [3] },
+  { path: "/announcements", label: "公告看板", roles: [1, 2] },
+  { path: "/admin", label: "用户管理", roles: [3] },
+  { path: "/admin/announcements", label: "公告管理", roles: [3] },
 ];
 
 const visibleMenuItems = computed(() =>
@@ -95,6 +96,13 @@ const activePath = computed(() => {
 const pageTitle = computed(() => {
   const item = menuItems.find((m) => m.path === activePath.value);
   return item?.label || "学习平台";
+});
+
+const pageDesc = computed(() => {
+  if (activePath.value === "/admin") {
+    return "管理用户账号、课程状态与系统运行。";
+  }
+  return "专注数据库课程的教学流程与学习体验。";
 });
 
 const logout = () => {

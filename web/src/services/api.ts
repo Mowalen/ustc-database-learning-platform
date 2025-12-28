@@ -324,6 +324,24 @@ export const adminApi = {
     );
     return data;
   },
+  async updateAnnouncement(
+    id: number,
+    payload: {
+      title?: string;
+      content?: string;
+      is_active?: boolean;
+    }
+  ): Promise<Announcement> {
+    const { data } = await api.put<Announcement>(
+      `/admin/announcements/${id}`,
+      payload
+    );
+    return data;
+  },
+  async deleteAnnouncement(id: number): Promise<Announcement> {
+    const { data } = await api.delete<Announcement>(`/admin/announcements/${id}`);
+    return data;
+  },
 };
 
 export const uploadApi = {

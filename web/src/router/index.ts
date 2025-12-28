@@ -15,6 +15,7 @@ import TasksCenterView from "@/views/TasksCenterView.vue";
 import ScoresView from "@/views/ScoresView.vue";
 import AnnouncementsView from "@/views/AnnouncementsView.vue";
 import AdminView from "@/views/AdminView.vue";
+import AdminAnnouncementsView from "@/views/AdminAnnouncementsView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
 import TeacherCoursesView from "@/views/TeacherCoursesView.vue";
@@ -66,6 +67,12 @@ const routes = [
         path: "admin",
         name: "admin",
         component: AdminView,
+        meta: { roles: [3] },
+      },
+      {
+        path: "admin/announcements",
+        name: "admin-announcements",
+        component: AdminAnnouncementsView,
         meta: { roles: [3] },
       },
       {
