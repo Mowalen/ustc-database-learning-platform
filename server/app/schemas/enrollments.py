@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models import EnrollmentStatus
+from app.core.enums import EnrollmentStatus
 from .courses import CourseOut
 from .users import UserOut
 

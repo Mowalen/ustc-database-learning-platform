@@ -15,12 +15,16 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./sql_app.db"
     
     # Security
-    SECRET_KEY: str = "CHANGE_THIS_TO_A_SECURE_SECRET_KEY"  # 请在生产环境中修改
+    SECRET_KEY: str = "CHANGE_THIS_TO_A_SECURE_SECRET_KEY"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Debug
+    DEBUG: bool = False
+    
     class Config:
         case_sensitive = True
+        extra = "ignore"
         # 从 .env 文件读取配置
         env_file = os.path.join(BASE_DIR, ".env")
         env_file_encoding = 'utf-8'
