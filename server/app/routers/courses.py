@@ -17,6 +17,15 @@ async def read_courses(
 ) -> Any:
     return await crud_course.get_multi(db, skip=skip, limit=limit)
 
+@router.get("/search", response_model=List[Course])
+async def search_courses(
+    q: str,
+    db: AsyncSession = Depends(get_db),
+    limit: int = 10,
+) -> Any:
+    limit = min(max(limit, 1), 10)
+    return await crud_course.search_by_title_or_description(db, query=q, limit=limit)
+
 @router.post("/", response_model=Course)
 async def create_course(
     *,
