@@ -134,3 +134,27 @@ async def list_submissions(session, task_id: int) -> list[Submission]:
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def update_task(session, task_id: int, payload) -> Task:
+    task = await get_task(session, task_id)
+    
+    if payload.title is not None:
+        task.title = payload.title
+    if payload.description is not None:
+        task.description = payload.description
+    if payload.type is not None:
+        task.type = payload.type
+    if payload.deadline is not None:
+        task.deadline = payload.deadline
+    
+    await session.commit()
+    await session.refresh(task)
+    return task
+
+
+async def delete_task(session, task_id: int) -> Task:
+    task = await get_task(session, task_id)
+    await session.delete(task)
+    await session.commit()
+    return task

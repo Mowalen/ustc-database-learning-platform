@@ -16,7 +16,7 @@ import type {
 } from "@/types";
 
 const baseURL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:9000/api/v1";
 
 const api: AxiosInstance = axios.create({
   baseURL,
@@ -211,6 +211,18 @@ export const taskApi = {
   async getTask(taskId: number): Promise<Task> {
     const { data } = await api.get<Task>(`/tasks/${taskId}`);
     return data;
+  },
+  async updateTask(taskId: number, payload: {
+    title?: string;
+    description?: string;
+    type?: "assignment" | "exam";
+    deadline?: string;
+  }): Promise<Task> {
+    const { data } = await api.put<Task>(`/tasks/${taskId}`, payload);
+    return data;
+  },
+  async deleteTask(taskId: number): Promise<void> {
+    await api.delete(`/tasks/${taskId}`);
   },
   async submitTask(taskId: number, payload: {
     student_id: number;

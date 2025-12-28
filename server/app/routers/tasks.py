@@ -7,7 +7,7 @@ from app.models import Course
 from app.models.user import User
 from app.routers import get_current_active_user
 from app.schemas.submissions import GradeUpdate, SubmissionCreate, SubmissionOut, SubmissionWithStudent
-from app.schemas.tasks import TaskCreate, TaskOut
+from app.schemas.tasks import TaskCreate, TaskOut, TaskUpdate
 
 router = APIRouter(tags=["Tasks"])
 
@@ -38,6 +38,37 @@ async def list_tasks(course_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/tasks/{task_id}", response_model=TaskOut)
 async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     return await crud_tasks.get_task(db, task_id)
+
+
+@router.put("/tasks/{task_id}", response_model=TaskOut)
+async def update_task(
+    task_id: int,
+    payload: TaskUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.role_id not in (2, 3):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    task = await crud_tasks.get_task(db, task_id)
+    course = await db.get(Course, task.course_id)
+    if current_user.role_id == 2 and course and course.teacher_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    return await crud_tasks.update_task(db, task_id, payload)
+
+
+@router.delete("/tasks/{task_id}", response_model=TaskOut)
+async def delete_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.role_id not in (2, 3):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    task = await crud_tasks.get_task(db, task_id)
+    course = await db.get(Course, task.course_id)
+    if current_user.role_id == 2 and course and course.teacher_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    return await crud_tasks.delete_task(db, task_id)
 
 
 @router.post("/tasks/{task_id}/submit", response_model=SubmissionOut)

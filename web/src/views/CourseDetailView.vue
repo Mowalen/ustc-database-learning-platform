@@ -34,7 +34,7 @@
             default-expand-all
             style="width: 100%"
           >
-            <el-table-column label="序号" min-width="80">
+            <el-table-column label="章节号" min-width="80">
               <template #default="scope">
                 <span v-if="scope.row.type === 'section'">{{ scope.row.order_index }}</span>
               </template>
@@ -118,9 +118,8 @@
                 {{ formatDate(scope.row.deadline) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="200">
+            <el-table-column label="操作" min-width="320">
               <template #default="scope">
-                <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
                 <el-button
                   v-if="isStudent"
                   size="small"
@@ -133,11 +132,27 @@
                 <el-button
                   v-if="isCourseOwner"
                   size="small"
+                  @click="openEditTask(scope.row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
                   type="primary"
                   plain
                   @click="openSubmissions(scope.row)"
                 >
                   查看提交
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="danger"
+                  plain
+                  @click="deleteTask(scope.row)"
+                >
+                  删除
                 </el-button>
               </template>
             </el-table-column>
@@ -160,9 +175,8 @@
                 {{ formatDate(scope.row.deadline) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="200">
+            <el-table-column label="操作" min-width="320">
               <template #default="scope">
-                <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
                 <el-button
                   v-if="isStudent"
                   size="small"
@@ -175,11 +189,27 @@
                 <el-button
                   v-if="isCourseOwner"
                   size="small"
+                  @click="openEditTask(scope.row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
                   type="primary"
                   plain
                   @click="openSubmissions(scope.row)"
                 >
                   查看提交
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="danger"
+                  plain
+                  @click="deleteTask(scope.row)"
+                >
+                  删除
                 </el-button>
               </template>
             </el-table-column>
@@ -205,14 +235,14 @@
 
     <el-dialog v-model="sectionDialog" :title="sectionDialogTitle" width="520px">
       <el-form :model="sectionForm" label-position="top">
+        <el-form-item label="第几章">
+          <el-input v-model.number="sectionForm.order_index" type="number" placeholder="例如：1、2、3..." />
+        </el-form-item>
         <el-form-item label="章节标题">
           <el-input v-model="sectionForm.title" />
         </el-form-item>
         <el-form-item label="内容">
           <el-input v-model="sectionForm.content" type="textarea" />
-        </el-form-item>
-        <el-form-item label="课件 URL">
-          <el-input v-model="sectionForm.material_url" />
         </el-form-item>
         <el-form-item label="上传课件">
           <el-upload
@@ -224,9 +254,7 @@
               上传课件文件
             </el-button>
           </el-upload>
-        </el-form-item>
-        <el-form-item label="视频 URL">
-          <el-input v-model="sectionForm.video_url" />
+          <span v-if="sectionForm.material_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
         <el-form-item label="上传视频">
           <el-upload
@@ -238,9 +266,7 @@
               上传视频文件
             </el-button>
           </el-upload>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="sectionForm.order_index" :min="0" />
+          <span v-if="sectionForm.video_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -277,7 +303,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="taskDialog" title="发布任务" width="520px">
+    <el-dialog v-model="taskDialog" :title="editingTaskId ? '编辑任务' : '发布任务'" width="520px">
       <el-form :model="taskForm" label-position="top">
         <el-form-item label="标题">
           <el-input v-model="taskForm.title" />
@@ -285,12 +311,7 @@
         <el-form-item label="描述">
           <el-input v-model="taskForm.description" type="textarea" />
         </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="taskForm.type" placeholder="选择类型">
-            <el-option label="作业" value="assignment" />
-            <el-option label="考试" value="exam" />
-          </el-select>
-        </el-form-item>
+
         <el-form-item label="截止时间">
           <el-date-picker
             v-model="taskForm.deadline"
@@ -336,7 +357,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="submissionsDialog" title="提交记录" width="760px">
+    <el-dialog v-model="submissionsDialog" title="提交记录" width="90%">
       <el-table :data="submissions" style="width: 100%">
         <el-table-column prop="student.username" label="学生" min-width="120" />
         <el-table-column prop="answer_text" label="答案" min-width="200" />
@@ -405,7 +426,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
-import { ElMessage, type UploadRequestOptions } from "element-plus";
+import { ElMessage, ElMessageBox, type UploadRequestOptions } from "element-plus";
 import {
   courseApi,
   sectionApi,
@@ -464,6 +485,7 @@ const sectionDialogTitle = ref("新建章节");
 const editingSectionId = ref<number | null>(null);
 
 const taskDialog = ref(false);
+const editingTaskId = ref<number | null>(null);
 const submitDialog = ref(false);
 const taskInfoDialog = ref(false);
 const activeTask = ref<Task | null>(null);
@@ -552,7 +574,7 @@ const openSectionDialog = (section?: Section) => {
       content: "",
       material_url: "",
       video_url: "",
-      order_index: 0,
+      order_index: 1,
     });
   }
   sectionDialog.value = true;
@@ -620,7 +642,7 @@ const handleMaterialUpload = async (options: UploadRequestOptions) => {
     const data = await uploadApi.uploadFile(file);
     sectionForm.material_url = data.url;
     ElMessage.success("课件上传成功");
-    options.onSuccess?.(data, file);
+    options.onSuccess?.(data);
   } catch (error: any) {
     options.onError?.(error);
     ElMessage.error(error?.response?.data?.detail || "课件上传失败");
@@ -636,7 +658,7 @@ const handleVideoUpload = async (options: UploadRequestOptions) => {
     const data = await uploadApi.uploadFile(file);
     sectionForm.video_url = data.url;
     ElMessage.success("视频上传成功");
-    options.onSuccess?.(data, file);
+    options.onSuccess?.(data);
   } catch (error: any) {
     options.onError?.(error);
     ElMessage.error(error?.response?.data?.detail || "视频上传失败");
@@ -646,6 +668,7 @@ const handleVideoUpload = async (options: UploadRequestOptions) => {
 };
 
 const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
+  editingTaskId.value = null;
   Object.assign(taskForm, {
     title: "",
     description: "",
@@ -655,21 +678,61 @@ const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
   taskDialog.value = true;
 };
 
+const openEditTask = (task: Task) => {
+  editingTaskId.value = task.id;
+  Object.assign(taskForm, {
+    title: task.title,
+    description: task.description || "",
+    type: task.type,
+    deadline: task.deadline || "",
+  });
+  taskDialog.value = true;
+};
+
 const saveTask = async () => {
   if (!auth.user) return;
   try {
-    await taskApi.createTask(courseId, {
-      teacher_id: auth.user.id,
-      title: taskForm.title,
-      description: taskForm.description || undefined,
-      type: taskForm.type,
-      deadline: taskForm.deadline || undefined,
-    });
-    ElMessage.success("任务已发布");
+    if (editingTaskId.value) {
+      // 编辑现有任务
+      await taskApi.updateTask(editingTaskId.value, {
+        title: taskForm.title,
+        description: taskForm.description || undefined,
+        type: taskForm.type,
+        deadline: taskForm.deadline || undefined,
+      });
+      ElMessage.success("任务已更新");
+    } else {
+      // 创建新任务
+      await taskApi.createTask(courseId, {
+        teacher_id: auth.user.id,
+        title: taskForm.title,
+        description: taskForm.description || undefined,
+        type: taskForm.type,
+        deadline: taskForm.deadline || undefined,
+      });
+      ElMessage.success("任务已发布");
+    }
     taskDialog.value = false;
     tasks.value = await taskApi.listTasks(courseId);
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "发布任务失败");
+    ElMessage.error(error?.response?.data?.detail || (editingTaskId.value ? "更新任务失败" : "发布任务失败"));
+  }
+};
+
+const deleteTask = async (task: Task) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除作业"${task.title}"吗？`, "提示", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    await taskApi.deleteTask(task.id);
+    ElMessage.success("作业已删除");
+    tasks.value = await taskApi.listTasks(courseId);
+  } catch (error: any) {
+    if (error !== "cancel") {
+      ElMessage.error(error?.response?.data?.detail || "删除失败");
+    }
   }
 };
 
@@ -748,6 +811,30 @@ const toggleEnroll = async () => {
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.detail || "操作失败");
   }
+};
+
+const formatDate = (date: string | null | undefined) => {
+  if (!date) return "-";
+  return new Date(date).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatTaskType = (type: string | undefined) => {
+  if (type === "assignment") return "作业";
+  if (type === "exam") return "考试";
+  return type || "-";
+};
+
+const formatStatus = (status: string | undefined) => {
+  if (status === "submitted") return "已提交";
+  if (status === "graded") return "已批改";
+  if (status === "late") return "迟交";
+  return status || "-";
 };
 
 onMounted(() => {

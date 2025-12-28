@@ -16,6 +16,13 @@ class TaskCreate(BaseModel):
     deadline: Optional[datetime] = None
 
 
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[TaskType] = None
+    deadline: Optional[datetime] = None
+
+
 class TaskOut(BaseModel):
     id: int
     course_id: int

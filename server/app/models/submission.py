@@ -34,7 +34,8 @@ class Submission(Base):
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     graded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     status: Mapped[SubmissionStatus] = mapped_column(
-        Enum(SubmissionStatus, name="submission_status"), default=SubmissionStatus.SUBMITTED
+        Enum(SubmissionStatus, name="submission_status", values_callable=lambda x: [e.value for e in x]),
+        default=SubmissionStatus.SUBMITTED
     )
 
     task: Mapped["Task"] = relationship(back_populates="submissions")
