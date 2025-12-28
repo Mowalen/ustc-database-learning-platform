@@ -77,9 +77,9 @@ const menuItems = [
   { path: "/courses", label: "课程中心", roles: [1, 2, 3] },
   { path: "/teaching", label: "我的授课", roles: [2] },
   { path: "/enrollments", label: "我的选课", roles: [1] },
-  { path: "/tasks", label: "作业与考试", roles: [1] },
-  { path: "/scores", label: "成绩反馈", roles: [1] },
-  { path: "/announcements", label: "公告看板", roles: [1, 2, 3] },
+  { path: "/tasks", label: "作业与考试", roles: [] },
+  { path: "/scores", label: "成绩反馈", roles: [] },
+  { path: "/announcements", label: "公告看板", roles: [] },
   { path: "/admin", label: "管理后台", roles: [3] },
 ];
 

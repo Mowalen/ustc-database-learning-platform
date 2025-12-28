@@ -2,15 +2,6 @@
   <div class="courses">
     <div class="courses__header">
       <div class="filter">
-        <el-select v-model="selectedCategory" placeholder="全部分类" clearable>
-          <el-option
-            v-for="cat in categories"
-            :key="cat.id"
-            :label="cat.name"
-            :value="cat.id"
-          />
-        </el-select>
-        <el-button @click="refresh">刷新</el-button>
       </div>
       <div class="actions">
         <!-- Admin only actions if needed, or removing entirely as requested for "only view" -->
@@ -52,6 +43,7 @@
                 size="default" 
                 type="primary" 
                 class="full-width-btn"
+                :disabled="isStudent && !enrolledCourseIds.includes(course.id)"
                 @click="viewDetail(course.id)"
               >
                 查看详情
@@ -195,6 +187,10 @@ const paginatedCourses = computed(() => {
 });
 
 const getTeacherName = (course: Course) => {
+  const teacher = (course as any).teacher;
+  if (teacher) {
+    return teacher.full_name || teacher.username;
+  }
   // 如果是当前用户的课程，显示当前用户名
   if (auth.user?.id === course.teacher_id) {
     return auth.user?.full_name || auth.user?.username || `教师 ${course.teacher_id}`;

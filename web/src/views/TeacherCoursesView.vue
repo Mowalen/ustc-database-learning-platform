@@ -2,15 +2,6 @@
   <div class="courses">
     <div class="courses__header">
       <div class="filter">
-        <el-select v-model="selectedCategory" placeholder="全部分类" clearable>
-          <el-option
-            v-for="cat in categories"
-            :key="cat.id"
-            :label="cat.name"
-            :value="cat.id"
-          />
-        </el-select>
-        <el-button @click="refresh">刷新</el-button>
       </div>
       <div class="actions">
         <el-button type="primary" @click="openCreate">

@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
-    <!-- 公告看板 (教师模式 - 顶部滚动条) -->
-    <section class="announcement-board" v-if="auth.roleId === 2">
+    <!-- 公告看板 (教师/学生模式 - 顶部滚动条) -->
+    <section class="announcement-board" v-if="auth.roleId === 2 || auth.roleId === 1">
       <div class="board-header">
         <div class="board-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -96,8 +96,8 @@
       </el-card>
     </section>
 
-    <!-- 快速入口 (学生/管理员) -->
-    <section class="actions" v-if="auth.roleId !== 2">
+    <!-- 快速入口 (仅管理员) -->
+    <section class="actions" v-if="auth.roleId === 3">
       <div class="actions__header">
         <h3>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -211,6 +211,13 @@ const visibleStats = computed(() => {
       { label: "平台课程数量", value: stats.value[0].value, desc: "全平台已发布课程" },
       { label: "教师教授课程", value: stats.value[1].value, desc: "您教授的课程" },
       { label: "待批改作业", value: stats.value[2].value, desc: "等待批改的提交" },
+    ];
+  }
+  if (auth.roleId === 1) {
+    return [
+      { label: "课程总量", value: stats.value[0].value, desc: "系统内已发布课程" },
+      { label: "我的选课", value: stats.value[1].value, desc: "当前进行中的学习" },
+      { label: "待完成作业", value: stats.value[2].value, desc: "等待提交的作业" },
     ];
   }
   return stats.value;

@@ -26,45 +26,135 @@
             新建章节
           </el-button>
         </div>
-        <div class="table-wrap">
-          <el-table :data="sections" style="width: 100%">
-            <el-table-column prop="order_index" label="序号" min-width="80" />
-            <el-table-column prop="title" label="章节标题" min-width="150" />
-            <el-table-column prop="content" label="内容摘要" min-width="200" />
-            <el-table-column label="资源" min-width="120">
+        <div class="sections-list table-wrap">
+          <el-table
+            :data="sectionTree"
+            row-key="unique_key"
+            :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+            default-expand-all
+            style="width: 100%"
+          >
+            <el-table-column label="序号" min-width="80">
               <template #default="scope">
-                <div class="link-group">
-                  <a v-if="scope.row.material_url" :href="scope.row.material_url" target="_blank">课件</a>
-                  <a v-if="scope.row.video_url" :href="scope.row.video_url" target="_blank">视频</a>
-                  <span v-if="!scope.row.material_url && !scope.row.video_url">暂无</span>
+                <span v-if="scope.row.type === 'section'">{{ scope.row.order_index }}</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="章节标题" min-width="200">
+               <template #default="scope">
+                 <div class="tree-title-cell">
+                   <template v-if="scope.row.type === 'section'">
+                     <span>{{ scope.row.title }}</span>
+                   </template>
+                   <template v-else-if="scope.row.type === 'video'">
+                     <el-icon class="tree-icon video-icon"><VideoPlay /></el-icon>
+                     <span>{{ scope.row.title }}</span>
+                   </template>
+                   <template v-else-if="scope.row.type === 'material'">
+                     <el-icon class="tree-icon material-icon"><Folder /></el-icon>
+                     <span>{{ scope.row.title }}</span>
+                   </template>
+                 </div>
+               </template>
+            </el-table-column>
+
+            <el-table-column label="内容摘要" min-width="250">
+              <template #default="scope">
+                <div v-if="scope.row.type === 'section'" class="truncate-text" :title="scope.row.content">
+                  {{ scope.row.content || '-' }}
+                </div>
+                <div v-else class="status-text">
+                  <el-tag v-if="scope.row.url" type="success" size="small" effect="plain">已上传</el-tag>
+                  <el-tag v-else type="info" size="small" effect="plain">暂无</el-tag>
                 </div>
               </template>
             </el-table-column>
-            <el-table-column v-if="isCourseOwner" label="操作" min-width="160">
+
+            <el-table-column label="操作" min-width="180">
               <template #default="scope">
-                <el-button size="small" @click="openSectionDialog(scope.row)">编辑</el-button>
-                <el-button size="small" type="danger" plain @click="deleteSection(scope.row)">删除</el-button>
+                <template v-if="scope.row.type === 'section'">
+                  <el-button size="small" @click="viewSection(scope.row.raw)">详情</el-button>
+                  <el-button v-if="isCourseOwner" size="small" @click="openSectionDialog(scope.row.raw)">编辑</el-button>
+                  <el-button v-if="isCourseOwner" size="small" type="danger" plain @click="deleteSection(scope.row.raw)">删除</el-button>
+                </template>
+                <template v-else>
+                  <el-button 
+                    v-if="scope.row.type === 'video' && scope.row.url" 
+                    size="small" 
+                    type="primary" 
+                    plain
+                    @click="openVideo(scope.row.url)"
+                  >
+                    播放
+                  </el-button>
+                  <el-button 
+                    v-if="scope.row.type === 'material' && scope.row.url" 
+                    size="small" 
+                    type="primary" 
+                    plain
+                    @click="downloadMaterial(scope.row.url)"
+                  >
+                    下载
+                  </el-button>
+                </template>
               </template>
             </el-table-column>
           </el-table>
         </div>
       </el-tab-pane>
 
-      <el-tab-pane label="作业与考试" name="tasks">
+      <el-tab-pane label="作业" name="assignments">
         <div class="section-header">
-          <p>按课程发布作业与考试，支持提交与评分。</p>
-          <el-button v-if="isCourseOwner" type="primary" @click="openTaskDialog">
-            发布任务
+          <p>课程作业列表与提交情况。</p>
+          <el-button v-if="isCourseOwner" type="primary" @click="openTaskDialog('assignment')">
+            发布作业
           </el-button>
         </div>
         <div class="table-wrap">
-          <el-table :data="tasks" style="width: 100%">
+          <el-table :data="assignments" style="width: 100%">
             <el-table-column prop="title" label="标题" min-width="200" />
-            <el-table-column prop="type" label="类型" min-width="100">
+            <el-table-column prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
-                {{ formatTaskType(scope.row.type) }}
+                {{ formatDate(scope.row.deadline) }}
               </template>
             </el-table-column>
+            <el-table-column label="操作" min-width="200">
+              <template #default="scope">
+                <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
+                <el-button
+                  v-if="isStudent"
+                  size="small"
+                  type="success"
+                  plain
+                  @click="openSubmit(scope.row)"
+                >
+                  提交
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openSubmissions(scope.row)"
+                >
+                  查看提交
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="考试" name="exams">
+        <div class="section-header">
+          <p>课程考试安排与评分。</p>
+          <el-button v-if="isCourseOwner" type="primary" @click="openTaskDialog('exam')">
+            发布考试
+          </el-button>
+        </div>
+        <div class="table-wrap">
+          <el-table :data="exams" style="width: 100%">
+            <el-table-column prop="title" label="标题" min-width="200" />
             <el-table-column prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.deadline) }}
@@ -134,6 +224,34 @@
       <template #footer>
         <el-button @click="sectionDialog = false">取消</el-button>
         <el-button type="primary" @click="saveSection">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="sectionInfoDialog" title="章节详情" width="600px">
+      <div class="section-detail">
+        <h3>{{ activeSection?.title }}</h3>
+        
+        <div class="section-detail__content">
+           <p v-if="activeSection?.content" style="white-space: pre-wrap;">{{ activeSection?.content }}</p>
+           <p v-else class="text-muted">暂无内容摘要</p>
+        </div>
+
+        <div class="section-detail__resources" v-if="activeSection?.material_url || activeSection?.video_url">
+          <h4>学习资源</h4>
+          <div class="resource-links">
+            <a v-if="activeSection?.material_url" :href="activeSection?.material_url" target="_blank" class="resource-item">
+              <el-icon><Document /></el-icon>
+              <span>课件资料</span>
+            </a>
+            <a v-if="activeSection?.video_url" :href="activeSection?.video_url" target="_blank" class="resource-item">
+               <el-icon><VideoPlay /></el-icon>
+               <span>教学视频</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="sectionInfoDialog = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -246,6 +364,19 @@
         <el-button type="primary" @click="submitGrade">提交评分</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="videoPlayerDialog" title="视频播放" width="800px" destroy-on-close>
+      <div class="video-container">
+        <video 
+          v-if="playVideoUrl" 
+          :src="playVideoUrl" 
+          controls 
+          autoplay 
+          style="width: 100%; max-height: 600px;"
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -261,7 +392,7 @@ import {
 } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent } from "@/types";
-import { formatDate, formatStatus, formatTaskType } from "@/utils/format";
+import { ArrowRight, Document, VideoPlay, Folder, Download, CaretRight } from "@element-plus/icons-vue";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -273,6 +404,37 @@ const sections = ref<Section[]>([]);
 const tasks = ref<Task[]>([]);
 const students = ref<EnrollmentWithStudent[]>([]);
 const activeTab = ref("sections");
+
+const sectionTree = computed(() => {
+  return sections.value.map(section => ({
+    id: section.id,
+    unique_key: `section_${section.id}`,
+    title: section.title,
+    order_index: section.order_index,
+    content: section.content,
+    type: 'section',
+    raw: section,
+    children: [
+      {
+        unique_key: `video_${section.id}`,
+        title: '教学视频',
+        type: 'video',
+        url: section.video_url,
+        parent: section
+      },
+      {
+        unique_key: `material_${section.id}`,
+        title: '课件资料',
+        type: 'material',
+        url: section.material_url,
+        parent: section
+      }
+    ]
+  }));
+});
+
+const assignments = computed(() => tasks.value.filter(t => t.type === 'assignment'));
+const exams = computed(() => tasks.value.filter(t => t.type === 'exam'));
 
 const sectionDialog = ref(false);
 const sectionDialogTitle = ref("新建章节");
@@ -286,6 +448,12 @@ const submissionsDialog = ref(false);
 const submissions = ref<SubmissionWithStudent[]>([]);
 const gradeDialog = ref(false);
 const activeSubmissionId = ref<number | null>(null);
+
+const videoPlayerDialog = ref(false);
+const playVideoUrl = ref("");
+
+const sectionInfoDialog = ref(false);
+const activeSection = ref<Section | null>(null);
 
 const sectionForm = reactive({
   title: "",
@@ -406,11 +574,25 @@ const deleteSection = async (section: Section) => {
   }
 };
 
-const openTaskDialog = () => {
+const viewSection = (section: Section) => {
+  activeSection.value = section;
+  sectionInfoDialog.value = true;
+};
+
+const openVideo = (url: string) => {
+  playVideoUrl.value = url;
+  videoPlayerDialog.value = true;
+};
+
+const downloadMaterial = (url: string) => {
+  window.open(url, '_blank');
+};
+
+const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
   Object.assign(taskForm, {
     title: "",
     description: "",
-    type: "assignment",
+    type: type,
     deadline: "",
   });
   taskDialog.value = true;
@@ -631,4 +813,189 @@ onMounted(() => {
   font-size: 13px;
   color: var(--color-ink-muted);
 }
+
+
+.section-detail h3 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: var(--color-ink);
+}
+
+.sections-list {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+}
+
+.section-index {
+  font-weight: 600;
+  margin-right: 12px;
+  color: var(--color-teal);
+  background: rgba(31, 111, 109, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.section-name {
+  font-weight: 600;
+  color: var(--color-ink);
+  font-size: 15px;
+}
+
+.section-actions {
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.section-content {
+  padding: 10px 16px;
+  background: #fafafa;
+}
+
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.resource-row:last-child {
+  margin-bottom: 0;
+}
+
+.resource-row.clickable {
+  cursor: pointer;
+}
+
+.resource-row.clickable:hover {
+  background: #f0fdfc;
+  transform: translateX(4px);
+}
+
+.resource-icon {
+  font-size: 20px;
+  color: #999;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 50%;
+}
+
+.resource-icon.video-icon {
+  color: #fff;
+  background: #409eff; /* Or teal */
+}
+
+.resource-icon.pdf-icon {
+  color: #fff;
+  background: #e6a23c;
+}
+
+.resource-info {
+  flex: 1;
+}
+
+.resource-label {
+  display: block;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 2px;
+}
+
+.resource-sub {
+  font-size: 12px;
+  color: #999;
+}
+
+.resource-desc {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+
+.action-icon {
+  color: #ccc;
+}
+
+
+
+.section-detail__content {
+  margin-bottom: 24px;
+  line-height: 1.6;
+  color: var(--color-ink);
+}
+
+.section-detail__resources h4 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--color-ink);
+}
+
+.resource-links {
+  display: flex;
+  gap: 16px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(31, 111, 109, 0.05);
+  border-radius: 8px;
+  color: var(--color-teal);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.resource-item:hover {
+  background: rgba(31, 111, 109, 0.1);
+  transform: translateY(-2px);
+}
+
+.text-muted {
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+.tree-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tree-icon {
+  font-size: 16px;
+  color: #999;
+}
+
+.tree-icon.video-icon {
+  color: #409eff;
+}
+
+.tree-icon.material-icon {
+  color: #e6a23c;
+}
+
+.truncate-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+}
 </style>
+```

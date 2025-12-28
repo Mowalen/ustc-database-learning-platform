@@ -9,20 +9,27 @@
     </div>
 
     <el-table :data="enrollments" style="width: 100%">
-      <el-table-column prop="course.title" label="课程名称" />
-      <el-table-column label="课程信息">
+      <el-table-column prop="course.title" label="课程名称" min-width="150" />
+      <el-table-column label="授课教师" min-width="150">
         <template #default="scope">
-          <span v-if="scope.row.course.category_id">分类 ID：{{ scope.row.course.category_id }}</span>
-          <span v-else>未分类</span>
+           {{ (scope.row.course as any).teacher?.full_name || (scope.row.course as any).teacher?.username || '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="选课时间" width="160">
+      <el-table-column label="课程开始时间" min-width="150">
+        <template #default="scope">
+          {{ formatDate(scope.row.course.created_at) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="选课时间" min-width="150">
         <template #default="scope">
           {{ formatDate(scope.row.enrolled_at) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120">
+      <el-table-column label="" width="200">
         <template #default="scope">
+          <el-button size="small" @click="viewCourse(scope.row.course_id)">
+            查看详情
+          </el-button>
           <el-button size="small" type="danger" plain @click="dropCourse(scope.row.course_id)">
             退课
           </el-button>
@@ -33,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from "vue-router";
 import { onMounted, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { enrollmentApi } from "@/services/api";
@@ -40,6 +48,7 @@ import { useAuthStore } from "@/stores/auth";
 import type { EnrollmentWithCourse } from "@/types";
 import { formatDate } from "@/utils/format";
 
+const router = useRouter();
 const auth = useAuthStore();
 const enrollments = ref<EnrollmentWithCourse[]>([]);
 
@@ -61,6 +70,10 @@ const dropCourse = async (courseId: number) => {
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.detail || "退课失败");
   }
+};
+
+const viewCourse = (courseId: number) => {
+  router.push(`/courses/${courseId}`);
 };
 
 onMounted(() => {
