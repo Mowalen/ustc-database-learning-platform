@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.core.enums import SubmissionStatus
+from app.models import SubmissionStatus
 from app.schemas.users import UserOut
 
 

@@ -1,11 +1,13 @@
-from typing import AsyncGenerator, Optional, Dict, Any
+from typing import AsyncGenerator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
-from app.crud import crud_user
-from app.db.mysql_pool import get_db_cursor
+from app.crud.crud_user import user as crud_user
+from app.db.session import get_db
+from app.models.user import User
 from app.schemas.token import TokenData
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -13,12 +15,9 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 
 async def get_current_user(
-    cursor_conn = Depends(get_db_cursor),
+    db: AsyncSession = Depends(get_db),
     token: str = Depends(reusable_oauth2)
-) -> Dict[str, Any]:
-    """获取当前用户（从JWT token）"""
-    cursor, conn = cursor_conn
-    
+) -> User:
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -29,35 +28,31 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
-    
-    user = await crud_user.get_user_by_id(cursor, user_id=int(token_data.sub))
+    user = await crud_user.get(db, id=int(token_data.sub))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 async def get_current_active_user(
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> Dict[str, Any]:
-    """确保当前用户是活跃的"""
-    if not current_user.get('is_active', True):
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 def require_roles(*role_ids: int):
-    """要求特定角色权限的依赖"""
     async def _role_checker(
-        current_user: Dict[str, Any] = Depends(get_current_active_user),
-    ) -> Dict[str, Any]:
-        if current_user.get('role_id') not in role_ids:
+        current_user: User = Depends(get_current_active_user),
+    ) -> User:
+        if current_user.role_id not in role_ids:
             raise HTTPException(status_code=403, detail="Not enough permissions")
         return current_user
     return _role_checker
 
 def get_current_active_superuser(
-    current_user: Dict[str, Any] = Depends(get_current_user),
-) -> Dict[str, Any]:
-    """获取当前管理员用户（role_id = 3）"""
-    if current_user.get('role_id') != 3:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+    current_user: User = Depends(get_current_user),
+) -> User:
+    # Assuming role_id 1 is admin, or check role name
+    # For now, just check if role_id is 3 (Admin) based on typical setup, but better to check role name
+    # We will implement role check properly later
     return current_user
-

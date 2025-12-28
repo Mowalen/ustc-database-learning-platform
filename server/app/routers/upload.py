@@ -1,9 +1,10 @@
 import os
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.routers import get_current_active_user
+from app.models.user import User
 from app.core.config import BASE_DIR
 
 router = APIRouter()
@@ -16,6 +17,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def save_upload_file(upload_file: UploadFile, subfolder: str = "") -> str:
     """
     保存上传的文件到服务器
+    
+    Args:
+        upload_file: 上传的文件对象
+        subfolder: 子文件夹名称（如 'images', 'documents' 等）
+    
+    Returns:
+        文件的URL路径
     """
     # 创建子文件夹
     upload_path = os.path.join(UPLOAD_DIR, subfolder)
@@ -38,10 +46,13 @@ def save_upload_file(upload_file: UploadFile, subfolder: str = "") -> str:
 async def upload_file(
     *,
     file: UploadFile = File(...),
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
     上传通用文件
+    
+    - 支持的文件类型：PDF, DOC, DOCX, TXT, ZIP等
+    - 最大文件大小：10MB
     """
     # 检查文件大小（10MB限制）
     file.file.seek(0, 2)
@@ -69,7 +80,7 @@ async def upload_file(
         "file_url": file_url,
         "file_size": file_size,
         "uploaded_at": datetime.now().isoformat(),
-        "uploaded_by": current_user['id']
+        "uploaded_by": current_user.id
     }
 
 
@@ -77,10 +88,14 @@ async def upload_file(
 async def upload_image(
     *,
     file: UploadFile = File(...),
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
     上传图片文件
+    
+    - 支持的图片类型：JPG, JPEG, PNG, GIF, WEBP
+    - 最大文件大小：5MB
+    - 用途：用户头像、课程封面等
     """
     # 检查文件大小（5MB限制）
     file.file.seek(0, 2)
@@ -108,7 +123,7 @@ async def upload_image(
         "file_url": file_url,
         "file_size": file_size,
         "uploaded_at": datetime.now().isoformat(),
-        "uploaded_by": current_user['id']
+        "uploaded_by": current_user.id
     }
 
 
@@ -116,10 +131,13 @@ async def upload_image(
 async def upload_avatar(
     *,
     file: UploadFile = File(...),
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
     上传用户头像
+    
+    - 支持的图片类型：JPG, JPEG, PNG
+    - 最大文件大小：2MB
     """
     # 检查文件大小（2MB限制）
     file.file.seek(0, 2)
@@ -147,5 +165,5 @@ async def upload_avatar(
         "file_url": file_url,
         "file_size": file_size,
         "uploaded_at": datetime.now().isoformat(),
-        "uploaded_by": current_user['id']
+        "uploaded_by": current_user.id
     }
