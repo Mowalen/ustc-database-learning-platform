@@ -32,3 +32,9 @@ class Course(Base):
     sections = relationship("CourseSection", back_populates="course", cascade="all, delete-orphan")
     enrollments = relationship("CourseEnrollment", back_populates="course", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="course", cascade="all, delete-orphan")
+
+    @property
+    def teacher_name(self) -> str | None:
+        if not self.teacher:
+            return None
+        return self.teacher.full_name or self.teacher.username

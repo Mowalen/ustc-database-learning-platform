@@ -214,8 +214,30 @@
         <el-form-item label="课件 URL">
           <el-input v-model="sectionForm.material_url" />
         </el-form-item>
+        <el-form-item label="上传课件">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleMaterialUpload"
+            accept=".ppt,.pptx,.pdf"
+          >
+            <el-button :loading="uploadingMaterial" type="primary" plain>
+              上传课件文件
+            </el-button>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="视频 URL">
           <el-input v-model="sectionForm.video_url" />
+        </el-form-item>
+        <el-form-item label="上传视频">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleVideoUpload"
+            accept="video/*"
+          >
+            <el-button :loading="uploadingVideo" type="primary" plain>
+              上传视频文件
+            </el-button>
+          </el-upload>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="sectionForm.order_index" :min="0" />
@@ -383,12 +405,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, type UploadRequestOptions } from "element-plus";
 import {
   courseApi,
   sectionApi,
   taskApi,
   enrollmentApi,
+  uploadApi,
 } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent } from "@/types";
@@ -454,6 +477,8 @@ const playVideoUrl = ref("");
 
 const sectionInfoDialog = ref(false);
 const activeSection = ref<Section | null>(null);
+const uploadingMaterial = ref(false);
+const uploadingVideo = ref(false);
 
 const sectionForm = reactive({
   title: "",
@@ -586,6 +611,38 @@ const openVideo = (url: string) => {
 
 const downloadMaterial = (url: string) => {
   window.open(url, '_blank');
+};
+
+const handleMaterialUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingMaterial.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    sectionForm.material_url = data.url;
+    ElMessage.success("课件上传成功");
+    options.onSuccess?.(data, file);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "课件上传失败");
+  } finally {
+    uploadingMaterial.value = false;
+  }
+};
+
+const handleVideoUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingVideo.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    sectionForm.video_url = data.url;
+    ElMessage.success("视频上传成功");
+    options.onSuccess?.(data, file);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "视频上传失败");
+  } finally {
+    uploadingVideo.value = false;
+  }
 };
 
 const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {

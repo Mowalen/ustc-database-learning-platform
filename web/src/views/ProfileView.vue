@@ -70,6 +70,7 @@ const save = async () => {
     return;
   }
   await auth.updateProfile({
+    old_password: form.old_password,
     full_name: form.full_name || undefined,
     email: form.email || undefined,
     password: form.password || undefined,

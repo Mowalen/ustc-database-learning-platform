@@ -99,6 +99,18 @@
               {{ scope.row.is_active ? "启用" : "停用" }}
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="scope">
+              <el-button
+                size="small"
+                type="danger"
+                plain
+                @click="deleteUser(scope.row)"
+              >
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -117,10 +129,11 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { adminApi } from "@/services/api";
 import type { User } from "@/types";
 import { formatRole } from "@/utils/format";
+import { useAuthStore } from "@/stores/auth";
 
 const createForm = reactive({
   username: "",
@@ -205,6 +218,27 @@ const disableUser = async () => {
   }
 };
 
+const deleteUser = async (user: User) => {
+  if (auth.user?.id === user.id) {
+    ElMessage.error("不能删除当前登录账号");
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(
+      `确认删除用户 ${user.username} 吗？该操作会停用账号。`,
+      "删除用户",
+      { type: "warning" }
+    );
+    await adminApi.deleteUser(user.id);
+    ElMessage.success("用户已删除");
+    await loadUsers();
+  } catch (error: any) {
+    if (error !== "cancel") {
+      ElMessage.error(error?.response?.data?.detail || "删除失败");
+    }
+  }
+};
+
 const deactivateCourse = async () => {
   if (!courseForm.course_id) return;
   try {
@@ -256,3 +290,4 @@ h3 {
   margin-bottom: 12px;
 }
 </style>
+const auth = useAuthStore();

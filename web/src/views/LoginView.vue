@@ -37,7 +37,7 @@
 
         <div class="login-options">
           <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-          <a href="#" class="forgot-link">忘记密码？</a>
+          <a href="#" class="forgot-link" @click.prevent="openResetDialog">忘记密码？</a>
         </div>
 
         <el-button 
@@ -68,6 +68,38 @@
       </div>
     </div>
 
+    <el-dialog
+      v-model="resetDialogVisible"
+      title="找回密码"
+      width="420px"
+      append-to-body
+    >
+      <el-form :model="resetForm" label-position="top">
+        <el-form-item label="邮箱">
+          <el-input v-model="resetForm.email" type="email" placeholder="请输入注册邮箱" />
+        </el-form-item>
+        <el-form-item label="验证码">
+          <el-input v-model="resetForm.code" placeholder="请输入验证码">
+            <template #append>
+              <el-button :loading="resetLoading" @click="requestResetCode">
+                发送验证码
+              </el-button>
+            </template>
+          </el-input>
+        </el-form-item>
+        <p v-if="resetHint" class="reset-hint">{{ resetHint }}</p>
+        <el-form-item label="新密码">
+          <el-input v-model="resetForm.new_password" type="password" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="resetLoading" @click="submitReset">
+          重置密码
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 装饰性元素 -->
     <div class="decoration decoration-1"></div>
     <div class="decoration decoration-2"></div>
@@ -78,6 +110,8 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { authApi } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -89,11 +123,65 @@ const form = reactive({
 });
 
 const rememberMe = ref(false);
+const resetDialogVisible = ref(false);
+const resetLoading = ref(false);
+const resetHint = ref("");
+
+const resetForm = reactive({
+  email: "",
+  code: "",
+  new_password: "",
+});
 
 const onSubmit = async () => {
   const success = await auth.login(form.username, form.password);
   if (success) {
     router.push({ name: "dashboard" });
+  }
+};
+
+const openResetDialog = () => {
+  resetDialogVisible.value = true;
+  resetHint.value = "";
+  resetForm.code = "";
+  resetForm.new_password = "";
+};
+
+const requestResetCode = async () => {
+  if (!resetForm.email) {
+    ElMessage.warning("请输入邮箱");
+    return;
+  }
+  resetLoading.value = true;
+  try {
+    const data = await authApi.requestPasswordReset(resetForm.email);
+    resetHint.value = data.code ? `测试验证码：${data.code}` : "验证码已发送";
+    ElMessage.success("验证码已发送");
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.detail || "发送验证码失败");
+  } finally {
+    resetLoading.value = false;
+  }
+};
+
+const submitReset = async () => {
+  if (!resetForm.email || !resetForm.code || !resetForm.new_password) {
+    ElMessage.warning("请完整填写邮箱、验证码和新密码");
+    return;
+  }
+  resetLoading.value = true;
+  try {
+    await authApi.confirmPasswordReset({
+      email: resetForm.email,
+      code: resetForm.code,
+      new_password: resetForm.new_password,
+    });
+    ElMessage.success("密码已重置，请使用新密码登录");
+    resetDialogVisible.value = false;
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.detail || "重置密码失败");
+  } finally {
+    resetLoading.value = false;
   }
 };
 </script>
@@ -228,6 +316,12 @@ const onSubmit = async () => {
 .forgot-link:hover {
   color: var(--color-teal);
   text-decoration: underline;
+}
+
+.reset-hint {
+  margin: -6px 0 12px;
+  font-size: 12px;
+  color: var(--color-ink-muted);
 }
 
 .submit-btn {

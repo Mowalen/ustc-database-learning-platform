@@ -187,16 +187,15 @@ const paginatedCourses = computed(() => {
 });
 
 const getTeacherName = (course: Course) => {
-  const teacher = (course as any).teacher;
+  if (course.teacher_name) return course.teacher_name;
+  const teacher = course.teacher;
   if (teacher) {
-    return teacher.full_name || teacher.username;
+    return teacher.full_name || teacher.username || "未设置";
   }
-  // 如果是当前用户的课程，显示当前用户名
   if (auth.user?.id === course.teacher_id) {
-    return auth.user?.full_name || auth.user?.username || `教师 ${course.teacher_id}`;
+    return auth.user?.full_name || auth.user?.username || "未设置";
   }
-  // 否则显示教师ID（后续可以扩展为从用户列表中查询）
-  return `教师 ${course.teacher_id}`;
+  return "未设置";
 };
 
 const categoryName = (course: Course) => {

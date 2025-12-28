@@ -15,9 +15,16 @@
         <p>选择角色开始你的教学或学习体验</p>
       </div>
 
-      <el-form :model="form" label-position="top" class="register-form" @submit.prevent="onSubmit">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-position="top"
+        class="register-form"
+        @submit.prevent="onSubmit"
+      >
         <div class="form-row">
-          <el-form-item label="用户名" class="form-item-half">
+          <el-form-item label="用户名" prop="username" class="form-item-half">
             <el-input 
               v-model="form.username" 
               placeholder="请输入用户名"
@@ -26,7 +33,7 @@
             />
           </el-form-item>
           
-          <el-form-item label="姓名" class="form-item-half">
+          <el-form-item label="姓名" prop="full_name" class="form-item-half">
             <el-input 
               v-model="form.full_name" 
               placeholder="请输入真实姓名"
@@ -36,7 +43,7 @@
           </el-form-item>
         </div>
 
-        <el-form-item label="密码">
+        <el-form-item label="密码" prop="password">
           <el-input 
             v-model="form.password" 
             type="password" 
@@ -47,7 +54,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="邮箱">
+        <el-form-item label="邮箱" prop="email">
           <el-input 
             v-model="form.email" 
             type="email"
@@ -57,7 +64,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="选择角色">
+        <el-form-item label="选择角色" prop="role_id">
           <div class="role-selector">
             <div 
               class="role-option" 
@@ -144,9 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -160,17 +167,46 @@ const form = reactive({
   role_id: 1,
 });
 
+const formRef = ref<FormInstance>();
+
+const requireTrim = (message: string) => ({
+  validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+    if (!value || !value.trim()) {
+      callback(new Error(message));
+      return;
+    }
+    callback();
+  },
+  trigger: "blur",
+});
+
+const rules: FormRules = {
+  username: [requireTrim("请输入用户名")],
+  full_name: [requireTrim("请输入姓名")],
+  password: [
+    { required: true, message: "请输入密码", trigger: "blur" },
+    { min: 6, message: "密码至少 6 位字符", trigger: "blur" },
+  ],
+  email: [
+    requireTrim("请输入邮箱"),
+    { type: "email", message: "邮箱格式不正确", trigger: "blur" },
+  ],
+  role_id: [{ required: true, message: "请选择角色", trigger: "change" }],
+};
+
 const onSubmit = async () => {
+  const valid = await formRef.value?.validate().catch(() => false);
+  if (!valid) return;
   if (form.role_id === 3) {
     ElMessage.error("注册仅支持学生或教师账号");
     form.role_id = 1;
     return;
   }
   const success = await auth.register({
-    username: form.username,
+    username: form.username.trim(),
     password: form.password,
-    full_name: form.full_name || undefined,
-    email: form.email || undefined,
+    full_name: form.full_name.trim(),
+    email: form.email.trim(),
     role_id: form.role_id,
   });
   if (success) {

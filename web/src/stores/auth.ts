@@ -107,6 +107,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
     async updateProfile(payload: {
+      old_password: string;
       full_name?: string;
       email?: string;
       password?: string;

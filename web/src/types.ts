@@ -46,6 +46,8 @@ export interface Course {
   updated_at?: string | null;
   is_active: boolean;
   category?: CourseCategory | null;
+  teacher?: User | null;
+  teacher_name?: string | null;
 }
 
 export interface Section {

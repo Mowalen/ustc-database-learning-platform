@@ -51,6 +51,24 @@ export const authApi = {
     const { data } = await api.post<User>("/auth/register", payload);
     return data;
   },
+  async requestPasswordReset(email: string): Promise<{ message: string; code?: string }> {
+    const { data } = await api.post<{ message: string; code?: string }>(
+      "/auth/password-reset/request",
+      { email }
+    );
+    return data;
+  },
+  async confirmPasswordReset(payload: {
+    email: string;
+    code: string;
+    new_password: string;
+  }): Promise<{ message: string }> {
+    const { data } = await api.post<{ message: string }>(
+      "/auth/password-reset/confirm",
+      payload
+    );
+    return data;
+  },
 };
 
 export const userApi = {
@@ -59,6 +77,7 @@ export const userApi = {
     return data;
   },
   async updateMe(payload: {
+    old_password: string;
     full_name?: string;
     email?: string;
     password?: string;
@@ -300,6 +319,21 @@ export const adminApi = {
     const { data } = await api.post<Announcement>(
       "/admin/announcements",
       payload
+    );
+    return data;
+  },
+};
+
+export const uploadApi = {
+  async uploadFile(file: File): Promise<{ url: string; filename: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post<{ url: string; filename: string }>(
+      "/uploads",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
     );
     return data;
   },

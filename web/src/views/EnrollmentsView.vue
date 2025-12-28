@@ -9,10 +9,16 @@
     </div>
 
     <el-table :data="enrollments" style="width: 100%">
-      <el-table-column prop="course.title" label="课程名称" min-width="150" />
+      <el-table-column label="课程名称" min-width="150">
+        <template #default="scope">
+          <el-link type="primary" :underline="false" @click="viewCourse(scope.row.course_id)">
+            {{ scope.row.course.title }}
+          </el-link>
+        </template>
+      </el-table-column>
       <el-table-column label="授课教师" min-width="150">
         <template #default="scope">
-           {{ (scope.row.course as any).teacher?.full_name || (scope.row.course as any).teacher?.username || '-' }}
+           {{ teacherName(scope.row.course) }}
         </template>
       </el-table-column>
       <el-table-column label="课程开始时间" min-width="150">
@@ -74,6 +80,10 @@ const dropCourse = async (courseId: number) => {
 
 const viewCourse = (courseId: number) => {
   router.push(`/courses/${courseId}`);
+};
+
+const teacherName = (course: EnrollmentWithCourse["course"]) => {
+  return course.teacher_name || course.teacher?.full_name || course.teacher?.username || "-";
 };
 
 onMounted(() => {

@@ -69,7 +69,9 @@ async def list_student_enrollments(session, student_id: int) -> list[CourseEnrol
     await _get_student(session, student_id)
     stmt = (
         select(CourseEnrollment)
-        .options(joinedload(CourseEnrollment.course))
+        .options(
+            joinedload(CourseEnrollment.course).joinedload(Course.teacher)
+        )
         .where(
             CourseEnrollment.student_id == student_id,
             CourseEnrollment.status == EnrollmentStatus.ACTIVE,
