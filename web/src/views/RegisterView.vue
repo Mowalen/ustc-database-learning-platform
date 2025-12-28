@@ -19,7 +19,6 @@
         <el-select v-model="form.role_id" placeholder="请选择角色" style="width: 100%">
           <el-option label="学生" :value="1" />
           <el-option label="教师" :value="2" />
-          <el-option label="管理员" :value="3" />
         </el-select>
       </el-form-item>
       <el-button type="primary" :loading="auth.loading" class="submit" @click="onSubmit">
@@ -36,6 +35,7 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -50,6 +50,11 @@ const form = reactive({
 });
 
 const onSubmit = async () => {
+  if (form.role_id === 3) {
+    ElMessage.error("注册仅支持学生或教师账号");
+    form.role_id = 1;
+    return;
+  }
   const success = await auth.register({
     username: form.username,
     password: form.password,

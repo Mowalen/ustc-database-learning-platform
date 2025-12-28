@@ -21,88 +21,94 @@
       <el-tab-pane label="章节内容" name="sections">
         <div class="section-header">
           <p>课程章节与学习资源一览。</p>
-          <el-button v-if="isTeacher" type="primary" @click="openSectionDialog()">
+          <el-button v-if="isCourseOwner" type="primary" @click="openSectionDialog()">
             新建章节
           </el-button>
         </div>
-        <el-table :data="sections" style="width: 100%">
-          <el-table-column prop="order_index" label="序号" width="80" />
-          <el-table-column prop="title" label="章节标题" />
-          <el-table-column prop="content" label="内容摘要" />
-          <el-table-column label="资源">
-            <template #default="scope">
-              <div class="link-group">
-                <a v-if="scope.row.material_url" :href="scope.row.material_url" target="_blank">课件</a>
-                <a v-if="scope.row.video_url" :href="scope.row.video_url" target="_blank">视频</a>
-                <span v-if="!scope.row.material_url && !scope.row.video_url">暂无</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="isTeacher" label="操作" width="160">
-            <template #default="scope">
-              <el-button size="small" @click="openSectionDialog(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" plain @click="deleteSection(scope.row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="table-wrap">
+          <el-table :data="sections" style="width: 100%">
+            <el-table-column prop="order_index" label="序号" width="80" />
+            <el-table-column prop="title" label="章节标题" />
+            <el-table-column prop="content" label="内容摘要" />
+            <el-table-column label="资源">
+              <template #default="scope">
+                <div class="link-group">
+                  <a v-if="scope.row.material_url" :href="scope.row.material_url" target="_blank">课件</a>
+                  <a v-if="scope.row.video_url" :href="scope.row.video_url" target="_blank">视频</a>
+                  <span v-if="!scope.row.material_url && !scope.row.video_url">暂无</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="isCourseOwner" label="操作" width="160">
+              <template #default="scope">
+                <el-button size="small" @click="openSectionDialog(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="deleteSection(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="作业与考试" name="tasks">
         <div class="section-header">
           <p>按课程发布作业与考试，支持提交与评分。</p>
-          <el-button v-if="isTeacher" type="primary" @click="openTaskDialog">
+          <el-button v-if="isCourseOwner" type="primary" @click="openTaskDialog">
             发布任务
           </el-button>
         </div>
-        <el-table :data="tasks" style="width: 100%">
-          <el-table-column prop="title" label="标题" />
-          <el-table-column prop="type" label="类型" width="120">
-            <template #default="scope">
-              {{ formatTaskType(scope.row.type) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="deadline" label="截止时间">
-            <template #default="scope">
-              {{ formatDate(scope.row.deadline) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200">
-            <template #default="scope">
-              <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
-              <el-button
-                v-if="isStudent"
-                size="small"
-                type="success"
-                plain
-                @click="openSubmit(scope.row)"
-              >
-                提交
-              </el-button>
-              <el-button
-                v-if="isTeacher"
-                size="small"
-                type="primary"
-                plain
-                @click="openSubmissions(scope.row)"
-              >
-                查看提交
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="table-wrap">
+          <el-table :data="tasks" style="width: 100%">
+            <el-table-column prop="title" label="标题" />
+            <el-table-column prop="type" label="类型" width="120">
+              <template #default="scope">
+                {{ formatTaskType(scope.row.type) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="deadline" label="截止时间">
+              <template #default="scope">
+                {{ formatDate(scope.row.deadline) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200">
+              <template #default="scope">
+                <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
+                <el-button
+                  v-if="isStudent"
+                  size="small"
+                  type="success"
+                  plain
+                  @click="openSubmit(scope.row)"
+                >
+                  提交
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openSubmissions(scope.row)"
+                >
+                  查看提交
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
 
-      <el-tab-pane v-if="isTeacher" label="学生名单" name="students">
-        <el-table :data="students" style="width: 100%">
-          <el-table-column prop="student.id" label="学生 ID" width="90" />
-          <el-table-column prop="student.username" label="用户名" />
-          <el-table-column prop="student.full_name" label="姓名" />
-          <el-table-column label="状态">
-            <template #default="scope">
-              {{ scope.row.status === "active" ? "在读" : "退课" }}
-            </template>
-          </el-table-column>
-        </el-table>
+      <el-tab-pane v-if="isCourseOwner" label="学生名单" name="students">
+        <div class="table-wrap">
+          <el-table :data="students" style="width: 100%">
+            <el-table-column prop="student.id" label="学生 ID" width="90" />
+            <el-table-column prop="student.username" label="用户名" />
+            <el-table-column prop="student.full_name" label="姓名" />
+            <el-table-column label="状态">
+              <template #default="scope">
+                {{ scope.row.status === "active" ? "在读" : "退课" }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
     </el-tabs>
 
@@ -307,6 +313,9 @@ const gradeForm = reactive({
 const isTeacher = computed(() => auth.roleId === 2);
 const isStudent = computed(() => auth.roleId === 1);
 const isEnrolled = ref(false);
+const isCourseOwner = computed(
+  () => isTeacher.value && course.value?.teacher_id === auth.user?.id
+);
 
 const loadData = async () => {
   loading.value = true;
@@ -316,7 +325,7 @@ const loadData = async () => {
       (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
     );
     tasks.value = await taskApi.listTasks(courseId);
-    if (isTeacher.value) {
+    if (isCourseOwner.value) {
       students.value = await enrollmentApi.courseStudents(courseId);
     }
     if (isStudent.value && auth.user) {
@@ -510,6 +519,7 @@ onMounted(() => {
 .course-detail {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .course-banner {
@@ -520,16 +530,23 @@ onMounted(() => {
   padding: 20px;
   background: rgba(209, 143, 59, 0.12);
   border-radius: 18px;
+  min-width: 0;
+}
+
+.course-banner > div {
+  min-width: 0;
 }
 
 .course-banner h2 {
   font-family: var(--font-display);
   font-size: 24px;
   margin-bottom: 6px;
+  overflow-wrap: anywhere;
 }
 
 .course-banner p {
   color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
 }
 
 .course-banner__actions {
@@ -547,6 +564,25 @@ onMounted(() => {
 
 .section-header p {
   color: var(--color-ink-muted);
+}
+
+.course-detail :deep(.el-tabs) {
+  width: 100%;
+  min-width: 0;
+}
+
+.course-detail :deep(.el-tabs__content),
+.course-detail :deep(.el-tab-pane) {
+  min-width: 0;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-wrap :deep(.el-table) {
+  width: 100%;
 }
 
 .link-group {

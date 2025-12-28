@@ -74,7 +74,7 @@ const menuItems = [
   { path: "/scores", label: "成绩反馈", roles: [1, 2] },
   { path: "/announcements", label: "公告看板", roles: [1, 2, 3] },
   { path: "/admin", label: "管理后台", roles: [3] },
-  { path: "/profile", label: "个人中心", roles: [1, 2, 3] },
+  { path: "/profile", label: "个人中心", roles: [1, 2] },
 ];
 
 const visibleMenuItems = computed(() =>
@@ -199,8 +199,24 @@ const toggleMenu = () => {
   gap: 12px;
 }
 
+.sidebar__footer .el-button {
+  width: 100%;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.sidebar__footer .el-button + .el-button {
+  margin-left: 0;
+}
+
 .content {
   padding: 32px 40px 40px;
+  min-width: 0;
 }
 
 .topbar {
@@ -236,6 +252,7 @@ const toggleMenu = () => {
   padding: 24px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
+  min-width: 0;
 }
 
 @media (max-width: 960px) {

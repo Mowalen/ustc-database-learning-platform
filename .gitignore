@@ -67,6 +67,7 @@ web/build/
 .env.test.local
 .env.production.local
 *.pdf
+.env
 
 # Database
 *.sqlite3

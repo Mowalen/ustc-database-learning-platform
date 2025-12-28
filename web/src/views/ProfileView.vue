@@ -19,6 +19,9 @@
     <el-card>
       <h3>更新信息</h3>
       <el-form :model="form" label-position="top">
+        <el-form-item label="旧密码">
+          <el-input v-model="form.old_password" type="password" show-password />
+        </el-form-item>
         <el-form-item label="姓名">
           <el-input v-model="form.full_name" />
         </el-form-item>
@@ -36,11 +39,13 @@
 
 <script setup lang="ts">
 import { reactive, watch } from "vue";
+import { ElMessage } from "element-plus";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
 
 const form = reactive({
+  old_password: "",
   full_name: "",
   email: "",
   password: "",
@@ -50,6 +55,7 @@ watch(
   () => auth.user,
   (user) => {
     if (user) {
+      form.old_password = "";
       form.full_name = user.full_name || "";
       form.email = user.email || "";
       form.password = "";
@@ -59,11 +65,17 @@ watch(
 );
 
 const save = async () => {
+  if (!form.old_password) {
+    ElMessage.error("请先输入旧密码");
+    return;
+  }
   await auth.updateProfile({
     full_name: form.full_name || undefined,
     email: form.email || undefined,
     password: form.password || undefined,
   });
+  form.old_password = "";
+  form.password = "";
 };
 </script>
 
