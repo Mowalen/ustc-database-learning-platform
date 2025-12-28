@@ -76,10 +76,12 @@ export const userApi = {
     const { data } = await api.get<User>("/users/me");
     return data;
   },
+  async verifyPassword(password: string): Promise<boolean> {
+    await api.post("/users/verify-password", { password });
+    return true;
+  },
   async updateMe(payload: {
-    old_password: string;
     full_name?: string;
-    email?: string;
     password?: string;
   }): Promise<User> {
     const { data } = await api.put<User>("/users/me", payload);

@@ -61,13 +61,46 @@ async def request_password_reset(
     payload: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
+    """
+    请求密码重置 - 发送验证码到用户邮箱
+    
+    开发模式（DEV_MODE=True）：直接返回验证码，不发送邮件
+    生产模式（DEV_MODE=False）：发送邮件到用户邮箱
+    """
     user = await crud_user.get_by_email(db, email=payload.email)
     if not user:
         raise HTTPException(status_code=404, detail="Email not found")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    
+    # 生成验证码
     code = password_reset_store.issue(payload.email)
-    return PasswordResetResponse(message="Verification code generated", code=code)
+    
+    # 根据模式决定是否发送邮件
+    if settings.DEV_MODE:
+        # 开发模式：直接返回验证码（方便测试）
+        return PasswordResetResponse(
+            message="Development mode: Verification code generated (not sent via email)",
+            code=code
+        )
+    else:
+        # 生产模式：发送邮件
+        from app.core.email import email_service
+        success = email_service.send_verification_code(
+            to_email=payload.email,
+            code=code,
+            purpose="密码重置"
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send verification email. Please try again later."
+            )
+        
+        return PasswordResetResponse(
+            message="Verification code sent to your email"
+        )
 
 
 @router.post("/password-reset/confirm", response_model=PasswordResetResponse)

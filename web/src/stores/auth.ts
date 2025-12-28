@@ -106,10 +106,21 @@ export const useAuthStore = defineStore("auth", {
         ElMessage.error("获取用户信息失败");
       }
     },
+    async verifyPassword(password: string) {
+      this.loading = true;
+      try {
+        await userApi.verifyPassword(password);
+        ElMessage.success("密码验证成功");
+        return true;
+      } catch (error: any) {
+        ElMessage.error(error?.response?.data?.detail || "密码验证失败");
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
     async updateProfile(payload: {
-      old_password: string;
       full_name?: string;
-      email?: string;
       password?: string;
     }) {
       this.loading = true;

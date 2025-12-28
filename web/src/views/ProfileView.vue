@@ -18,31 +18,65 @@
 
     <el-card>
       <h3>更新信息</h3>
-      <el-form :model="form" label-position="top">
-        <el-form-item label="旧密码">
-          <el-input v-model="form.old_password" type="password" show-password />
-        </el-form-item>
-        <el-form-item label="姓名">
-          <el-input v-model="form.full_name" />
-        </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="form.email" />
-        </el-form-item>
-        <el-form-item label="新密码">
-          <el-input v-model="form.password" type="password" show-password />
-        </el-form-item>
-      </el-form>
-      <el-button type="primary" :loading="auth.loading" @click="save">保存修改</el-button>
+      
+      <div v-if="!isVerified">
+        <el-alert
+          title="为了您的账号安全，请先验证密码以修改信息"
+          type="info"
+          show-icon
+          :closable="false"
+          style="margin-bottom: 16px"
+        />
+        <el-form @submit.prevent="handleVerify">
+            <el-form-item label="当前密码">
+            <el-input 
+                v-model="form.old_password" 
+                type="password" 
+                show-password 
+                placeholder="请输入当前密码" 
+                @keyup.enter="handleVerify"
+            />
+            </el-form-item>
+            <el-button type="primary" :loading="auth.loading" @click="handleVerify">验证身份</el-button>
+        </el-form>
+      </div>
+
+      <div v-else>
+        <el-alert
+            title="身份验证通过，您可以修改信息了"
+            type="success"
+            show-icon
+            :closable="false"
+            style="margin-bottom: 16px"
+        />
+        <el-form :model="form" label-position="top">
+            <el-form-item label="姓名">
+            <el-input v-model="form.full_name" />
+            </el-form-item>
+            <el-form-item label="邮箱">
+            <el-input v-model="form.email" disabled />
+            <span class="text-muted">邮箱不可修改</span>
+            </el-form-item>
+            <el-form-item label="新密码">
+            <el-input v-model="form.password" type="password" show-password placeholder="如果不修改密码，请留空" />
+            </el-form-item>
+        </el-form>
+        <div style="margin-top: 16px">
+            <el-button type="primary" :loading="auth.loading" @click="save">保存修改</el-button>
+            <el-button @click="isVerified = false">取消</el-button>
+        </div>
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { reactive, watch, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
+const isVerified = ref(false);
 
 const form = reactive({
   old_password: "",
@@ -64,19 +98,28 @@ watch(
   { immediate: true }
 );
 
+const handleVerify = async () => {
+    if (!form.old_password) {
+        ElMessage.warning("请先输入密码");
+        return;
+    }
+    const success = await auth.verifyPassword(form.old_password);
+    if (success) {
+        isVerified.value = true;
+        form.old_password = "";
+    }
+};
+
 const save = async () => {
-  if (!form.old_password) {
-    ElMessage.error("请先输入旧密码");
-    return;
-  }
   await auth.updateProfile({
-    old_password: form.old_password,
     full_name: form.full_name || undefined,
-    email: form.email || undefined,
     password: form.password || undefined,
   });
-  form.old_password = "";
   form.password = "";
+  // Reset verification after save? Or keep it?
+  // Usually keep it until page refresh or manual cancel.
+  ElMessage.success("保存成功");
+  isVerified.value = false; // Reset to safe state
 };
 </script>
 
@@ -104,5 +147,10 @@ const save = async () => {
 
 h3 {
   margin-bottom: 12px;
+}
+
+.text-muted {
+    font-size: 12px;
+    color: var(--color-ink-muted);
 }
 </style>
