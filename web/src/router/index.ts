@@ -17,6 +17,7 @@ import AnnouncementsView from "@/views/AnnouncementsView.vue";
 import AdminView from "@/views/AdminView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
+import TeacherCoursesView from "@/views/TeacherCoursesView.vue";
 
 const routes = [
   {
@@ -49,6 +50,12 @@ const routes = [
         name: "scores",
         component: ScoresView,
         meta: { roles: [1, 2] },
+      },
+      {
+        path: "teaching",
+        name: "teaching",
+        component: TeacherCoursesView,
+        meta: { roles: [2] },
       },
       {
         path: "announcements",

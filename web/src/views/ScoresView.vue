@@ -1,11 +1,6 @@
 <template>
   <div class="scores">
     <div class="header">
-      <div>
-        <h2>成绩与反馈</h2>
-        <p v-if="isStudent">查看你的作业 / 考试评分记录。</p>
-        <p v-else>按课程查看评分并导出成绩表。</p>
-      </div>
       <div class="header__actions">
         <el-select
           v-if="isTeacher"
@@ -29,29 +24,29 @@
     </div>
 
     <el-table :data="scores" style="width: 100%">
-      <el-table-column prop="task_title" label="任务" />
-      <el-table-column prop="student_id" label="学生" width="100" v-if="isTeacher" />
-      <el-table-column prop="score" label="分数" width="80">
+      <el-table-column prop="task_title" label="任务" min-width="180" />
+      <el-table-column prop="student_id" label="学生" min-width="100" v-if="isTeacher" />
+      <el-table-column prop="score" label="分数" min-width="80">
         <template #default="scope">
           {{ scope.row.score ?? "-" }}
         </template>
       </el-table-column>
-      <el-table-column prop="feedback" label="评语">
+      <el-table-column prop="feedback" label="评语" min-width="200">
         <template #default="scope">
           {{ scope.row.feedback || "-" }}
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="110">
+      <el-table-column label="状态" min-width="100">
         <template #default="scope">
           {{ formatStatus(scope.row.status) }}
         </template>
       </el-table-column>
-      <el-table-column label="评分时间" width="180">
+      <el-table-column label="评分时间" min-width="160">
         <template #default="scope">
           {{ formatDate(scope.row.graded_at) }}
         </template>
       </el-table-column>
-      <el-table-column v-if="isTeacher" label="操作" width="120">
+      <el-table-column v-if="isTeacher" label="操作" min-width="100">
         <template #default="scope">
           <el-button size="small" @click="openGrade(scope.row)">评分</el-button>
         </template>
@@ -173,18 +168,10 @@ onMounted(async () => {
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.header h2 {
-  font-family: var(--font-display);
-  margin-bottom: 6px;
-}
-
-.header p {
-  color: var(--color-ink-muted);
+  margin-bottom: 16px;
 }
 
 .header__actions {

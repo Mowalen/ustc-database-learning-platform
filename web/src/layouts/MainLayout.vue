@@ -10,8 +10,14 @@
       </div>
       <div class="user-card">
         <div class="avatar">
-          <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" alt="avatar" />
-          <span v-else>{{ auth.user?.username?.slice(0, 2)?.toUpperCase() }}</span>
+          <img
+            v-if="auth.user?.avatar_url"
+            :src="auth.user.avatar_url"
+            alt="avatar"
+          />
+          <span v-else>{{
+            auth.user?.username?.slice(0, 2)?.toUpperCase()
+          }}</span>
         </div>
         <div>
           <strong>{{ auth.user?.full_name || auth.user?.username }}</strong>
@@ -69,12 +75,12 @@ const mobileMenuOpen = ref(false);
 const menuItems = [
   { path: "/", label: "仪表盘", roles: [1, 2, 3] },
   { path: "/courses", label: "课程中心", roles: [1, 2, 3] },
+  { path: "/teaching", label: "我的授课", roles: [2] },
   { path: "/enrollments", label: "我的选课", roles: [1] },
-  { path: "/tasks", label: "作业与考试", roles: [1, 2] },
-  { path: "/scores", label: "成绩反馈", roles: [1, 2] },
+  { path: "/tasks", label: "作业与考试", roles: [1] },
+  { path: "/scores", label: "成绩反馈", roles: [1] },
   { path: "/announcements", label: "公告看板", roles: [1, 2, 3] },
   { path: "/admin", label: "管理后台", roles: [3] },
-  { path: "/profile", label: "个人中心", roles: [1, 2] },
 ];
 
 const visibleMenuItems = computed(() =>
@@ -129,7 +135,11 @@ const toggleMenu = () => {
   width: 48px;
   height: 48px;
   border-radius: 16px;
-  background: linear-gradient(140deg, var(--color-accent) 0%, var(--color-teal) 100%);
+  background: linear-gradient(
+    140deg,
+    var(--color-accent) 0%,
+    var(--color-teal) 100%
+  );
   display: grid;
   place-items: center;
   color: #fff;
@@ -253,6 +263,7 @@ const toggleMenu = () => {
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
   min-width: 0;
+  min-height: calc(100vh - 200px);
 }
 
 @media (max-width: 960px) {

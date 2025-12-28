@@ -13,8 +13,9 @@
         <el-button @click="refresh">刷新</el-button>
       </div>
       <div class="actions">
-        <!-- Admin only actions if needed, or removing entirely as requested for "only view" -->
-        <el-button v-if="isAdmin" plain @click="openCategory">管理分类</el-button>
+        <el-button type="primary" @click="openCreate">
+          新建课程
+        </el-button>
       </div>
     </div>
 
@@ -35,49 +36,45 @@
         
         <div class="course-card__body">
           <h3 class="course-card__title">{{ course.title }}</h3>
-          <p class="course-card__description">{{ course.description || "暂无课程简介，请联系教师了解详情。" }}</p>
+          <p class="course-card__description">{{ course.description || "暂无课程简介" }}</p>
         </div>
         
         <div class="course-card__footer">
-          <div class="course-card__meta">
-            <span class="meta-item">
-              <span class="meta-label">授课教师</span>
-              <span class="meta-value">{{ getTeacherName(course) }}</span>
-            </span>
-          </div>
-          
           <div class="course-card__actions">
             <div class="course-card__actions-row">
               <el-button 
                 size="default" 
                 type="primary" 
-                class="full-width-btn"
                 @click="viewDetail(course.id)"
               >
-                查看详情
+                管理课程
               </el-button>
               <el-button
-                v-if="isStudent"
                 size="default"
-                :type="enrolledCourseIds.includes(course.id) ? 'danger' : 'success'"
-                @click="toggleEnroll(course.id)"
+                @click="openEdit(course)"
               >
-                {{ enrolledCourseIds.includes(course.id) ? "退课" : "选课" }}
+                编辑
               </el-button>
             </div>
-            <el-button
-              v-if="isAdmin"
-              size="default"
-              type="danger"
-              plain
-              class="delete-button"
-              @click="handleDelete(course)"
-            >
-              删除
-            </el-button>
+            <div class="course-card__actions-row" style="margin-top: 10px;">
+              <el-button
+                size="default"
+                type="danger"
+                plain
+                class="delete-button"
+                @click="handleDelete(course)"
+              >
+                删除
+              </el-button>
+            </div>
           </div>
         </div>
       </el-card>
+
+      <div v-if="filteredCourses.length === 0" class="empty-state">
+        <p>您还没有创建任何课程。</p>
+        <el-button type="primary" @click="openCreate">立即创建课程</el-button>
+      </div>
     </div>
 
     <div class="pagination" v-if="filteredCourses.length > 0">
@@ -97,7 +94,7 @@
       append-to-body
     >
       <el-form :model="courseForm" label-position="top">
-        <el-form-item label="课程标题">
+        <el-form-item label="课程标题" required>
           <el-input v-model="courseForm.title" />
         </el-form-item>
         <el-form-item label="课程简介">
@@ -122,26 +119,6 @@
         <el-button type="primary" @click="submitCourse">保存</el-button>
       </template>
     </el-dialog>
-
-    <el-dialog
-      v-model="categoryDialog"
-      title="课程分类"
-      width="420px"
-      append-to-body
-    >
-      <el-form :model="categoryForm" label-position="top">
-        <el-form-item label="分类名称">
-          <el-input v-model="categoryForm.name" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="categoryForm.description" type="textarea" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="categoryDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitCategory">创建</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -149,7 +126,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { courseApi, enrollmentApi, adminApi } from "@/services/api";
+import { courseApi } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import type { Course, CourseCategory } from "@/types";
 
@@ -158,14 +135,12 @@ const router = useRouter();
 const courses = ref<Course[]>([]);
 const categories = ref<CourseCategory[]>([]);
 const selectedCategory = ref<number | null>(null);
-const enrolledCourseIds = ref<number[]>([]);
 const currentPage = ref(1);
 const pageSize = ref(8);
 
 const dialogVisible = ref(false);
 const dialogTitle = ref("新建课程");
 const editCourseId = ref<number | null>(null);
-const categoryDialog = ref(false);
 
 const courseForm = reactive({
   title: "",
@@ -174,18 +149,15 @@ const courseForm = reactive({
   category_id: null as number | null,
 });
 
-const categoryForm = reactive({
-  name: "",
-  description: "",
+const myCourses = computed(() => {
+  if (!auth.user) return [];
+  // Filter courses taught by the current user
+  return courses.value.filter(c => c.teacher_id === auth.user?.id);
 });
 
-const isTeacher = computed(() => auth.roleId === 2);
-const isAdmin = computed(() => auth.roleId === 3);
-const isStudent = computed(() => auth.roleId === 1);
-
 const filteredCourses = computed(() => {
-  if (!selectedCategory.value) return courses.value;
-  return courses.value.filter((course) => course.category_id === selectedCategory.value);
+  if (!selectedCategory.value) return myCourses.value;
+  return myCourses.value.filter((course) => course.category_id === selectedCategory.value);
 });
 
 const paginatedCourses = computed(() => {
@@ -193,15 +165,6 @@ const paginatedCourses = computed(() => {
   const end = start + pageSize.value;
   return filteredCourses.value.slice(start, end);
 });
-
-const getTeacherName = (course: Course) => {
-  // 如果是当前用户的课程，显示当前用户名
-  if (auth.user?.id === course.teacher_id) {
-    return auth.user?.full_name || auth.user?.username || `教师 ${course.teacher_id}`;
-  }
-  // 否则显示教师ID（后续可以扩展为从用户列表中查询）
-  return `教师 ${course.teacher_id}`;
-};
 
 const categoryName = (course: Course) => {
   if (course.category?.name) return course.category.name;
@@ -217,16 +180,9 @@ const loadCategories = async () => {
   categories.value = await courseApi.listCategories();
 };
 
-const loadEnrollments = async () => {
-  if (auth.user && auth.roleId === 1) {
-    const enrollments = await enrollmentApi.myEnrollments(auth.user.id);
-    enrolledCourseIds.value = enrollments.map((enroll) => enroll.course_id);
-  }
-};
-
 const refresh = async () => {
-  currentPage.value = 1; // 刷新时重置到第一页
-  await Promise.all([loadCourses(), loadCategories(), loadEnrollments()]);
+  currentPage.value = 1; 
+  await Promise.all([loadCourses(), loadCategories()]);
 };
 
 const openCreate = () => {
@@ -254,6 +210,10 @@ const openEdit = (course: Course) => {
 };
 
 const submitCourse = async () => {
+  if (!courseForm.title) {
+    ElMessage.warning("请填写课程标题");
+    return;
+  }
   try {
     if (editCourseId.value) {
       await courseApi.updateCourse(editCourseId.value, {
@@ -279,58 +239,13 @@ const submitCourse = async () => {
   }
 };
 
-const openCategory = () => {
-  Object.assign(categoryForm, { name: "", description: "" });
-  categoryDialog.value = true;
-};
-
-const submitCategory = async () => {
-  try {
-    await courseApi.createCategory({
-      name: categoryForm.name,
-      description: categoryForm.description || undefined,
-    });
-    ElMessage.success("分类已创建");
-    categoryDialog.value = false;
-    await loadCategories();
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "创建分类失败");
-  }
-};
-
-const toggleEnroll = async (courseId: number) => {
-  if (!auth.user) return;
-  try {
-    if (enrolledCourseIds.value.includes(courseId)) {
-      await enrollmentApi.drop(courseId, auth.user.id);
-      enrolledCourseIds.value = enrolledCourseIds.value.filter((id) => id !== courseId);
-      ElMessage.success("已退课");
-    } else {
-      await enrollmentApi.enroll(courseId, auth.user.id);
-      enrolledCourseIds.value.push(courseId);
-      ElMessage.success("选课成功");
-    }
-  } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "选课操作失败");
-  }
-};
-
 const viewDetail = (courseId: number) => {
   router.push({ name: "course-detail", params: { id: courseId } });
 };
 
-const canDelete = (course: Course) => {
-  if (isAdmin.value) return true;
-  return isTeacher.value && auth.user?.id === course.teacher_id;
-};
-
 const handleDelete = async (course: Course) => {
   try {
-    if (isAdmin.value) {
-      await adminApi.deactivateCourse(course.id);
-    } else {
-      await courseApi.deleteCourse(course.id);
-    }
+    await courseApi.deleteCourse(course.id);
     ElMessage.success("课程已删除");
     await loadCourses();
   } catch (error: any) {
@@ -342,7 +257,6 @@ onMounted(() => {
   refresh().catch(() => undefined);
 });
 
-// 监听分类变化，重置到第一页
 watch(selectedCategory, () => {
   currentPage.value = 1;
 });
@@ -350,8 +264,9 @@ watch(selectedCategory, () => {
 
 <style scoped>
 .courses {
-  display: grid;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .courses__header {
@@ -365,18 +280,6 @@ watch(selectedCategory, () => {
   display: flex;
   gap: 12px;
   align-items: center;
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
 }
 
 .course-grid {
@@ -414,7 +317,7 @@ watch(selectedCategory, () => {
 
 .course-card__body {
   margin-bottom: 20px;
-  min-height: 100px;
+  min-height: 80px;
 }
 
 .course-card__title {
@@ -430,7 +333,6 @@ watch(selectedCategory, () => {
   color: var(--color-ink-muted);
   font-size: 14px;
   line-height: 1.6;
-  min-height: 42px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -439,43 +341,8 @@ watch(selectedCategory, () => {
 }
 
 .course-card__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--color-border);
-}
-
-.course-card__meta {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.meta-label {
-  color: var(--color-ink-muted);
-  font-weight: 500;
-}
-
-.meta-value {
-  color: var(--color-ink);
-  font-weight: 600;
-  background: rgba(31, 111, 109, 0.08);
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-
-.course-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .course-card__actions-row {
@@ -487,11 +354,27 @@ watch(selectedCategory, () => {
   flex: 1;
 }
 
-.course-card__actions-row .full-width-btn {
+.delete-button {
   width: 100%;
 }
 
-.course-card__actions .delete-button {
-  width: 100%;
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px dashed var(--color-border);
+}
+
+.empty-state p {
+  color: var(--color-ink-muted);
+  margin-bottom: 20px;
 }
 </style>

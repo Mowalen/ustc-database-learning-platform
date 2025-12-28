@@ -1,14 +1,15 @@
 <template>
   <div class="course-detail" v-loading="loading">
     <div class="course-banner">
-      <div>
+      <el-tag class="course-banner__category" effect="light">
+        {{ course?.category?.name || "未分类" }}
+      </el-tag>
+      <div class="course-banner__content">
         <h2>{{ course?.title }}</h2>
         <p>{{ course?.description || "暂无课程简介" }}</p>
       </div>
-      <div class="course-banner__actions">
-        <el-tag effect="light">{{ course?.category?.name || "未分类" }}</el-tag>
+      <div class="course-banner__actions" v-if="isStudent">
         <el-button
-          v-if="isStudent"
           :type="isEnrolled ? 'danger' : 'success'"
           @click="toggleEnroll"
         >
@@ -27,10 +28,10 @@
         </div>
         <div class="table-wrap">
           <el-table :data="sections" style="width: 100%">
-            <el-table-column prop="order_index" label="序号" width="80" />
-            <el-table-column prop="title" label="章节标题" />
-            <el-table-column prop="content" label="内容摘要" />
-            <el-table-column label="资源">
+            <el-table-column prop="order_index" label="序号" min-width="80" />
+            <el-table-column prop="title" label="章节标题" min-width="150" />
+            <el-table-column prop="content" label="内容摘要" min-width="200" />
+            <el-table-column label="资源" min-width="120">
               <template #default="scope">
                 <div class="link-group">
                   <a v-if="scope.row.material_url" :href="scope.row.material_url" target="_blank">课件</a>
@@ -39,7 +40,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column v-if="isCourseOwner" label="操作" width="160">
+            <el-table-column v-if="isCourseOwner" label="操作" min-width="160">
               <template #default="scope">
                 <el-button size="small" @click="openSectionDialog(scope.row)">编辑</el-button>
                 <el-button size="small" type="danger" plain @click="deleteSection(scope.row)">删除</el-button>
@@ -58,18 +59,18 @@
         </div>
         <div class="table-wrap">
           <el-table :data="tasks" style="width: 100%">
-            <el-table-column prop="title" label="标题" />
-            <el-table-column prop="type" label="类型" width="120">
+            <el-table-column prop="title" label="标题" min-width="200" />
+            <el-table-column prop="type" label="类型" min-width="100">
               <template #default="scope">
                 {{ formatTaskType(scope.row.type) }}
               </template>
             </el-table-column>
-            <el-table-column prop="deadline" label="截止时间">
+            <el-table-column prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.deadline) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" min-width="200">
               <template #default="scope">
                 <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
                 <el-button
@@ -99,10 +100,10 @@
       <el-tab-pane v-if="isCourseOwner" label="学生名单" name="students">
         <div class="table-wrap">
           <el-table :data="students" style="width: 100%">
-            <el-table-column prop="student.id" label="学生 ID" width="90" />
-            <el-table-column prop="student.username" label="用户名" />
-            <el-table-column prop="student.full_name" label="姓名" />
-            <el-table-column label="状态">
+            <el-table-column prop="student.id" label="学生 ID" min-width="100" />
+            <el-table-column prop="student.username" label="用户名" min-width="150" />
+            <el-table-column prop="student.full_name" label="姓名" min-width="150" />
+            <el-table-column label="状态" min-width="100">
               <template #default="scope">
                 {{ scope.row.status === "active" ? "在读" : "退课" }}
               </template>
@@ -197,30 +198,30 @@
 
     <el-dialog v-model="submissionsDialog" title="提交记录" width="760px">
       <el-table :data="submissions" style="width: 100%">
-        <el-table-column prop="student.username" label="学生" width="160" />
-        <el-table-column prop="answer_text" label="答案" />
-        <el-table-column label="附件" width="140">
+        <el-table-column prop="student.username" label="学生" min-width="120" />
+        <el-table-column prop="answer_text" label="答案" min-width="200" />
+        <el-table-column label="附件" min-width="100">
           <template #default="scope">
             <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="90">
+        <el-table-column prop="score" label="分数" min-width="80">
           <template #default="scope">
             {{ scope.row.score ?? "-" }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" min-width="100">
           <template #default="scope">
             {{ formatStatus(scope.row.status) }}
           </template>
         </el-table-column>
-        <el-table-column label="评分时间" width="160">
+        <el-table-column label="评分时间" min-width="160">
           <template #default="scope">
             {{ formatDate(scope.row.graded_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" min-width="100">
           <template #default="scope">
             <el-button size="small" @click="openGrade(scope.row)">评分</el-button>
           </template>
@@ -523,36 +524,54 @@ onMounted(() => {
 }
 
 .course-banner {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16px;
-  align-items: center;
-  padding: 20px;
+  padding: 32px 28px;
   background: rgba(209, 143, 59, 0.12);
   border-radius: 18px;
   min-width: 0;
 }
 
-.course-banner > div {
+.course-banner__category {
+  position: absolute;
+  top: 20px;
+  right: 28px;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(31, 111, 109, 0.15), rgba(209, 143, 59, 0.15));
+  color: var(--color-teal);
+  border: 1px solid rgba(31, 111, 109, 0.2);
+  font-size: 14px;
+  padding: 6px 16px;
+  z-index: 1;
+}
+
+.course-banner__content {
   min-width: 0;
+  padding-right: 120px;
 }
 
-.course-banner h2 {
+.course-banner__content h2 {
   font-family: var(--font-display);
-  font-size: 24px;
-  margin-bottom: 6px;
+  font-size: 28px;
+  margin-bottom: 12px;
   overflow-wrap: anywhere;
+  color: var(--color-ink);
 }
 
-.course-banner p {
+.course-banner__content p {
   color: var(--color-ink-muted);
   overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .course-banner__actions {
   display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: flex-start;
 }
 
 .section-header {

@@ -1,27 +1,23 @@
 <template>
   <div class="tasks-center">
     <div class="header">
-      <div>
-        <h2>作业与考试</h2>
-        <p>集中查看任务安排与提交记录。</p>
-      </div>
       <el-button @click="loadTasks">刷新</el-button>
     </div>
 
     <el-table :data="tasks" style="width: 100%">
-      <el-table-column prop="courseTitle" label="课程" />
-      <el-table-column prop="title" label="任务标题" />
-      <el-table-column label="类型" width="120">
+      <el-table-column prop="courseTitle" label="课程" min-width="150" />
+      <el-table-column prop="title" label="任务标题" min-width="200" />
+      <el-table-column label="类型" min-width="100">
         <template #default="scope">
           {{ formatTaskType(scope.row.type) }}
         </template>
       </el-table-column>
-      <el-table-column label="截止时间" width="180">
+      <el-table-column label="截止时间" min-width="180">
         <template #default="scope">
           {{ formatDate(scope.row.deadline) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160">
+      <el-table-column label="操作" min-width="180">
         <template #default="scope">
           <el-button size="small" @click="viewTask(scope.row)">详情</el-button>
           <el-button
@@ -77,30 +73,30 @@
 
     <el-dialog v-model="submissionsDialog" title="提交记录" width="760px">
       <el-table :data="submissions" style="width: 100%">
-        <el-table-column prop="student.username" label="学生" width="160" />
-        <el-table-column prop="answer_text" label="答案" />
-        <el-table-column label="附件" width="140">
+        <el-table-column prop="student.username" label="学生" min-width="120" />
+        <el-table-column prop="answer_text" label="答案" min-width="200" />
+        <el-table-column label="附件" min-width="100">
           <template #default="scope">
             <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="90">
+        <el-table-column prop="score" label="分数" min-width="80">
           <template #default="scope">
             {{ scope.row.score ?? "-" }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" min-width="100">
           <template #default="scope">
             {{ formatStatus(scope.row.status) }}
           </template>
         </el-table-column>
-        <el-table-column label="评分时间" width="160">
+        <el-table-column label="评分时间" min-width="160">
           <template #default="scope">
             {{ formatDate(scope.row.graded_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" min-width="100">
           <template #default="scope">
             <el-button size="small" @click="openGrade(scope.row)">评分</el-button>
           </template>
@@ -270,17 +266,9 @@ onMounted(() => {
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.header h2 {
-  font-family: var(--font-display);
-  margin-bottom: 6px;
-}
-
-.header p {
-  color: var(--color-ink-muted);
+  margin-bottom: 16px;
 }
 
 .task-detail h3 {
