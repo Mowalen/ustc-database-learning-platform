@@ -29,126 +29,73 @@ class EmailService:
         Returns:
             bool: 发送是否成功
         """
+    def send_verification_code(self, to_email: str, code: str, purpose: str = "密码重置") -> bool:
         try:
-            # 创建邮件对象
+            # 1. 准备邮件内容
+            # 使用 MIMEMultipart 以支持 HTML，如果只想发纯文本可改为 MIMEText
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = f'{settings.PROJECT_NAME} - {purpose}验证码'
-            msg['From'] = f'{self.from_name} <{self.from_email}>'
+            
+            # 修正1：Subject 使用 Header 封装，防止乱码
+            from email.header import Header
+            subject = f'{settings.PROJECT_NAME} - {purpose}验证码'
+            msg['Subject'] = Header(subject, 'utf-8')
+            
+            # 修正2：From 头严格使用发送账号，避免被 163 拦截
+            # 很多国内邮箱要求 From 必须和 login 的 user 完全一致
+            sender = self.smtp_user
+            msg['From'] = sender 
             msg['To'] = to_email
 
-            # 邮件正文（纯文本版本）
-            text_body = f"""
-您好！
-
-您正在进行{purpose}操作，验证码为：
-
-{code}
-
-验证码将在 10 分钟后失效，请尽快使用。
-
-如果这不是您本人的操作，请忽略此邮件。
-
----
-{settings.PROJECT_NAME}
-"""
-
-            # 邮件正文（HTML版本）
+            # 邮件正文（保留 HTML 格式以维持美观，但在发送层参考了您的简单逻辑）
             html_body = f"""
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
     <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .container {{
-            background: #f9f9f9;
-            border-radius: 8px;
-            padding: 30px;
-            margin: 20px 0;
-        }}
-        .code-box {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin: 20px 0;
-        }}
-        .code {{
-            font-size: 32px;
-            font-weight: bold;
-            letter-spacing: 8px;
-            font-family: 'Courier New', monospace;
-        }}
-        .footer {{
-            color: #999;
-            font-size: 12px;
-            margin-top: 30px;
-            text-align: center;
-        }}
-        .warning {{
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 12px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }}
+        .container {{ padding: 20px; background-color: #f5f5f5; }}
+        .box {{ background: white; padding: 20px; border-radius: 5px; }}
+        .code {{ font-size: 24px; font-weight: bold; color: #409EFF; letter-spacing: 2px; }}
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>🔐 {purpose}验证码</h2>
-        <p>您好！</p>
-        <p>您正在进行<strong>{purpose}</strong>操作，请使用以下验证码完成验证：</p>
-        
-        <div class="code-box">
-            <div class="code">{code}</div>
-        </div>
-        
-        <div class="warning">
-            ⏰ 验证码将在 <strong>10 分钟</strong>后失效，请尽快使用。
-        </div>
-        
-        <p>如果这不是您本人的操作，请忽略此邮件。</p>
-        
-        <div class="footer">
-            <p>{settings.PROJECT_NAME}</p>
-            <p>此邮件由系统自动发送，请勿回复</p>
+        <div class="box">
+            <h3>{purpose}</h3>
+            <p>您的验证码是：</p>
+            <p class="code">{code}</p>
+            <p>10分钟内有效，过期请重新获取。</p>
+            <p style="font-size: 12px; color: #999;">{settings.PROJECT_NAME} 系统邮件</p>
         </div>
     </div>
 </body>
 </html>
-"""
+            """
+            
+            # 如果只想发纯文本：
+            # msg.attach(MIMEText(f"您的验证码是：{code}", 'plain', 'utf-8'))
+            msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-            # 添加正文部分
-            part1 = MIMEText(text_body, 'plain', 'utf-8')
-            part2 = MIMEText(html_body, 'html', 'utf-8')
-            msg.attach(part1)
-            msg.attach(part2)
-
-            # 发送邮件
-            if settings.SMTP_USE_TLS:
-                server = smtplib.SMTP(self.smtp_host, self.smtp_port)
-                server.starttls()
+            # 2. 发送邮件 (参考您的 sendEmail 函数逻辑)
+            # 根据端口自动选择 SSL
+            if self.smtp_port == 465:
+                # 端口 465 强制使用 SSL
+                smtp_obj = smtplib.SMTP_SSL(self.smtp_host, 465)
             else:
-                server = smtplib.SMTP_SSL(self.smtp_host, self.smtp_port)
+                # 其他端口（如 25, 587）使用普通 SMTP + STARTTLS
+                smtp_obj = smtplib.SMTP(self.smtp_host, self.smtp_port)
+                if settings.SMTP_USE_TLS:
+                    smtp_obj.starttls()
+
+            smtp_obj.login(self.smtp_user, self.smtp_password)
+            smtp_obj.sendmail(sender, [to_email], msg.as_string())
+            smtp_obj.quit()
             
-            if self.smtp_user and self.smtp_password:
-                server.login(self.smtp_user, self.smtp_password)
-            
-            server.send_message(msg)
-            server.quit()
-            
-            logger.info(f"Verification code email sent to {to_email}")
+            logger.info(f"Email sent successfully to {to_email}")
             return True
 
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP Error: {e}")
+            return False
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False

@@ -91,9 +91,7 @@
         <el-form-item label="课程简介">
           <el-input v-model="courseForm.description" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item label="封面 URL">
-          <el-input v-model="courseForm.cover_url" placeholder="可选" />
-        </el-form-item>
+
         <el-form-item label="课程分类">
           <el-select v-model="courseForm.category_id" placeholder="选择分类" clearable style="width: 100%">
             <el-option

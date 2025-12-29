@@ -42,10 +42,14 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
+RESOURCE_DIR = Path(__file__).resolve().parent.parent / "resource"
+RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/resources", StaticFiles(directory=str(RESOURCE_DIR)), name="resources")
+
 app.add_middleware(OperationLogMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,6 +63,7 @@ from app.routers import auth, courses, sections, users
 from app.routers import admin as admin_router
 from app.routers import enrollments, scores, tasks
 from app.routers import uploads as uploads_router
+from app.routers import resources as resources_router
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
@@ -69,6 +74,8 @@ app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["tasks"])
 app.include_router(scores.router, prefix=settings.API_V1_STR, tags=["scores"])
 app.include_router(admin_router.router, prefix=settings.API_V1_STR, tags=["admin"])
 app.include_router(uploads_router.router, prefix=settings.API_V1_STR, tags=["uploads"])
+app.include_router(resources_router.router, prefix=settings.API_V1_STR, tags=["resources"])
+
 
 if __name__ == "__main__":
     import uvicorn

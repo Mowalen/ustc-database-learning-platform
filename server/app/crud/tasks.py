@@ -39,6 +39,7 @@ async def create_task(session, course_id: int, payload: TaskCreate) -> Task:
         teacher_id=payload.teacher_id,
         title=payload.title,
         description=payload.description,
+        file_url=payload.file_url,
         type=payload.type,
         deadline=payload.deadline,
     )
@@ -143,6 +144,8 @@ async def update_task(session, task_id: int, payload) -> Task:
         task.title = payload.title
     if payload.description is not None:
         task.description = payload.description
+    if payload.file_url is not None:
+        task.file_url = payload.file_url
     if payload.type is not None:
         task.type = payload.type
     if payload.deadline is not None:

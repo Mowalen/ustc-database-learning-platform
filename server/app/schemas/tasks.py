@@ -12,6 +12,7 @@ class TaskCreate(BaseModel):
     teacher_id: int
     title: str
     description: Optional[str] = None
+    file_url: Optional[str] = None
     type: TaskType
     deadline: Optional[datetime] = None
 
@@ -19,6 +20,7 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    file_url: Optional[str] = None
     type: Optional[TaskType] = None
     deadline: Optional[datetime] = None
 
@@ -29,6 +31,7 @@ class TaskOut(BaseModel):
     teacher_id: int
     title: str
     description: Optional[str] = None
+    file_url: Optional[str] = None
     type: TaskType
     deadline: Optional[datetime] = None
     created_at: datetime

@@ -73,7 +73,7 @@ const router = useRouter();
 const mobileMenuOpen = ref(false);
 
 const menuItems = [
-  { path: "/", label: "仪表盘", roles: [1, 2, 3] },
+  { path: "/", label: "我的主页", roles: [1, 2, 3] },
   { path: "/courses", label: "课程管理", roles: [1, 2, 3] },
   { path: "/teaching", label: "我的授课", roles: [2] },
   { path: "/enrollments", label: "我的选课", roles: [1] },

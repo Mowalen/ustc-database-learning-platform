@@ -76,31 +76,36 @@ async def request_password_reset(
     # 生成验证码
     code = password_reset_store.issue(payload.email)
     
-    # 根据模式决定是否发送邮件
-    if settings.DEV_MODE:
-        # 开发模式：直接返回验证码（方便测试）
-        return PasswordResetResponse(
-            message="Development mode: Verification code generated (not sent via email)",
-            code=code
-        )
-    else:
-        # 生产模式：发送邮件
-        from app.core.email import email_service
-        success = email_service.send_verification_code(
-            to_email=payload.email,
-            code=code,
-            purpose="密码重置"
-        )
-        
-        if not success:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to send verification email. Please try again later."
+    # 生成验证码
+    code = password_reset_store.issue(payload.email)
+    
+    # 发送邮件
+    from app.core.email import email_service
+    success = email_service.send_verification_code(
+        to_email=payload.email,
+        code=code,
+        purpose="密码重置"
+    )
+    
+    # 如果发送失败
+    if not success:
+        # 如果是开发模式，发送失败时允许通过响应返回验证码作为回退方案
+        if settings.DEV_MODE:
+            return PasswordResetResponse(
+                message="[Dev] Email failed, code returned directly",
+                code=code
             )
-        
-        return PasswordResetResponse(
-            message="Verification code sent to your email"
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send verification email. Please try again later."
         )
+    
+    # 发送成功
+    # 在开发模式下，为了方便，也可以在message里带上code（可选）
+    return PasswordResetResponse(
+        message="Verification code sent to your email",
+        code=code if settings.DEV_MODE else None # 开发模式下同时也返回code方便调试
+    )
 
 
 @router.post("/password-reset/confirm", response_model=PasswordResetResponse)

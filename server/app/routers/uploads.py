@@ -18,7 +18,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
-    current_user: User = Depends(require_roles(2, 3)),
+    current_user: User = Depends(require_roles(1, 2, 3)),
 ) -> UploadResponse:
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty filename")

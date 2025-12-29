@@ -77,3 +77,6 @@ web/build/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+server/uploads/
+server/resource/

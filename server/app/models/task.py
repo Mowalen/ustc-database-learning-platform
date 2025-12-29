@@ -28,6 +28,7 @@ class Task(Base):
     teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String(100))
     description: Mapped[Optional[str]] = mapped_column(Text)
+    file_url: Mapped[Optional[str]] = mapped_column(String(255))
     type: Mapped[TaskType] = mapped_column(
         Enum(TaskType, name="task_type", values_callable=lambda x: [e.value for e in x])
     )

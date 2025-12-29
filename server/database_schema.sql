@@ -62,6 +62,10 @@ CREATE TABLE IF NOT EXISTS course_categories (
     INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程分类表';
 
+-- 插入30个常见课程分类数据
+
+
+
 -- ==========================================
 -- 4. 课程表 (courses)
 -- ==========================================
