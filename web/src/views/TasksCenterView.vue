@@ -80,11 +80,6 @@
     <el-dialog v-model="submissionsDialog" title="提交记录" width="760px">
       <el-table :data="submissions" style="width: 100%">
         <el-table-column prop="student.username" label="学生" min-width="120" />
-        <el-table-column label="答案" min-width="200">
-          <template #default="scope">
-            {{ scope.row.answer_text || "-" }}
-          </template>
-        </el-table-column>
         <el-table-column label="附件" min-width="100">
           <template #default="scope">
             <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
@@ -140,6 +135,7 @@ import { ElMessage, type UploadRequestOptions } from "element-plus";
 import { courseApi, enrollmentApi, taskApi, uploadApi } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import { formatDate, formatStatus, formatTaskType } from "@/utils/format";
+import { translateTaskDetail } from "@/utils/taskMessages";
 import type { SubmissionWithStudent, Task } from "@/types";
 
 interface TaskRow extends Task {
@@ -278,7 +274,9 @@ const submitTask = async () => {
     ElMessage.success("提交成功");
     submitDialog.value = false;
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "提交失败");
+    const detail = error?.response?.data?.detail;
+    const translated = translateTaskDetail(typeof detail === "string" ? detail : "");
+    ElMessage.error(translated || detail || "提交失败");
   }
 };
 

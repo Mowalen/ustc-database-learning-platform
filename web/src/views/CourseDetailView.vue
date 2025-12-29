@@ -359,6 +359,8 @@
             placeholder="选择时间"
             format="YYYY-MM-DD HH:mm"
             value-format="YYYY-MM-DDTHH:mm:ss"
+            :disabled-date="disablePastDate"
+            :disabled-time="disablePastTime"
           />
         </el-form-item>
       </el-form>
@@ -408,20 +410,20 @@
     </el-dialog>
 
     <el-dialog v-model="submissionsDialog" title="提交记录" width="90%">
-      <el-table :data="submissions" style="width: 100%">
-        <el-table-column prop="student.username" label="学生" min-width="120" />
-        <el-table-column label="答案" min-width="200">
-          <template #default="scope">
-            {{ scope.row.answer_text || "-" }}
-          </template>
+        <el-table :data="sortedSubmissions" style="width: 100%" @sort-change="handleSubmissionSort">
+          <el-table-column prop="student.username" label="学生" min-width="120" />
+          <el-table-column label="附件" min-width="100">
+            <template #default="scope">
+              <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
+              <span v-else>-</span>
+            </template>
         </el-table-column>
-        <el-table-column label="附件" min-width="100">
-          <template #default="scope">
-            <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="score" label="分数" min-width="80">
+        <el-table-column
+          prop="score"
+          label="分数"
+          min-width="80"
+          sortable="custom"
+        >
           <template #default="scope">
             {{ scope.row.score ?? "-" }}
           </template>
@@ -491,6 +493,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent } from "@/types";
 import { ArrowRight, Document, VideoPlay, Folder, Download, CaretRight } from "@element-plus/icons-vue";
+import { translateTaskDetail } from "@/utils/taskMessages";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -533,6 +536,24 @@ const sectionTree = computed(() => {
 
 const assignments = computed(() => tasks.value.filter(t => t.type === 'assignment'));
 const exams = computed(() => tasks.value.filter(t => t.type === 'exam'));
+const sortedSubmissions = computed(() => {
+  const list = submissions.value.slice();
+  if (submissionSort.value.prop !== "score" || !submissionSort.value.order) {
+    return list;
+  }
+  const isAscending = submissionSort.value.order === "ascending";
+  return list.sort((a, b) => {
+    const aScore = a.score;
+    const bScore = b.score;
+    const aEmpty = aScore === null || aScore === undefined;
+    const bEmpty = bScore === null || bScore === undefined;
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    const diff = Number(aScore) - Number(bScore);
+    return isAscending ? diff : -diff;
+  });
+});
 
 const sectionDialog = ref(false);
 const sectionDialogTitle = ref("新建章节");
@@ -540,11 +561,16 @@ const editingSectionId = ref<number | null>(null);
 
 const taskDialog = ref(false);
 const editingTaskId = ref<number | null>(null);
+const originalTaskDeadline = ref("");
 const submitDialog = ref(false);
 const taskInfoDialog = ref(false);
 const activeTask = ref<Task | null>(null);
 const submissionsDialog = ref(false);
 const submissions = ref<SubmissionWithStudent[]>([]);
+const submissionSort = ref<{ prop: string; order: "ascending" | "descending" | null }>({
+  prop: "",
+  order: null,
+});
 const gradeDialog = ref(false);
 const activeSubmissionId = ref<number | null>(null);
 
@@ -573,6 +599,38 @@ const taskForm = reactive({
   type: "assignment" as "assignment" | "exam",
   deadline: "",
 });
+
+const disablePastDate = (date: Date) => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return date.getTime() < startOfToday.getTime();
+};
+
+const disablePastTime = (date: Date) => {
+  const now = new Date();
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  if (!isToday) {
+    return {
+      disabledHours: () => [],
+      disabledMinutes: () => [],
+      disabledSeconds: () => [],
+    };
+  }
+
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  return {
+    disabledHours: () => Array.from({ length: currentHour }, (_, i) => i),
+    disabledMinutes: (hour: number) =>
+      hour === currentHour
+        ? Array.from({ length: currentMinute + 1 }, (_, i) => i)
+        : [],
+    disabledSeconds: () => [],
+  };
+};
 
 const submitForm = reactive({
   file_url: "",
@@ -761,6 +819,7 @@ const handleSubmissionUpload = async (options: UploadRequestOptions) => {
 
 const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
   editingTaskId.value = null;
+  originalTaskDeadline.value = "";
   Object.assign(taskForm, {
     title: "",
     description: "",
@@ -773,6 +832,7 @@ const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
 
 const openEditTask = (task: Task) => {
   editingTaskId.value = task.id;
+  originalTaskDeadline.value = task.deadline || "";
   Object.assign(taskForm, {
     title: task.title,
     description: task.description || "",
@@ -785,6 +845,21 @@ const openEditTask = (task: Task) => {
 
 const saveTask = async () => {
   if (!auth.user) return;
+  if (taskForm.deadline) {
+    const deadlineTime = new Date(taskForm.deadline).getTime();
+    const nowTime = Date.now();
+    if (Number.isNaN(deadlineTime)) {
+      ElMessage.warning("截止时间格式不正确");
+      return;
+    }
+    if (deadlineTime <= nowTime) {
+      const isEditing = Boolean(editingTaskId.value);
+      if (!isEditing || taskForm.deadline !== originalTaskDeadline.value) {
+        ElMessage.warning("截止时间需晚于当前时间");
+        return;
+      }
+    }
+  }
   try {
     if (editingTaskId.value) {
       // 编辑现有任务
@@ -840,11 +915,22 @@ const viewTask = (task: Task) => {
 const openSubmissions = async (task: Task) => {
   try {
     activeTask.value = task;
+    submissionSort.value = { prop: "", order: null };
     submissions.value = await taskApi.listSubmissions(task.id);
     submissionsDialog.value = true;
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.detail || "加载提交记录失败");
   }
+};
+
+const handleSubmissionSort = (payload: {
+  prop: string;
+  order: "ascending" | "descending" | null;
+}) => {
+  submissionSort.value = {
+    prop: payload.prop || "",
+    order: payload.order,
+  };
 };
 
 const openGrade = (submission: SubmissionWithStudent) => {
@@ -891,7 +977,9 @@ const submitTask = async () => {
     ElMessage.success("提交成功");
     submitDialog.value = false;
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "提交失败");
+    const detail = error?.response?.data?.detail;
+    const translated = translateTaskDetail(typeof detail === "string" ? detail : "");
+    ElMessage.error(translated || detail || "提交失败");
   }
 };
 

@@ -53,6 +53,16 @@
               详情
             </el-button>
             <el-button
+              v-if="isStudent"
+              size="small"
+              :type="isEnrolled(scope.row.id) ? 'info' : 'success'"
+              plain
+              :disabled="!scope.row.is_active"
+              @click="toggleEnrollment(scope.row)"
+            >
+              {{ isEnrolled(scope.row.id) ? "退课" : "选课" }}
+            </el-button>
+            <el-button
               v-if="canEdit(scope.row)"
               size="small"
               type="warning"
@@ -152,7 +162,7 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Search } from "@element-plus/icons-vue";
-import { courseApi, adminApi } from "@/services/api";
+import { courseApi, adminApi, enrollmentApi } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import type { Course, CourseCategory } from "@/types";
 
@@ -161,6 +171,7 @@ const router = useRouter();
 const loading = ref(false);
 const courses = ref<Course[]>([]);
 const categories = ref<CourseCategory[]>([]);
+const enrolledCourseIds = ref<number[]>([]);
 const searchQuery = ref("");
 const currentPage = ref(1);
 const pageSize = ref(10); // Increased page size for table view
@@ -185,6 +196,7 @@ const categoryForm = reactive({
 });
 
 const isTeacher = computed(() => auth.roleId === 2);
+const isStudent = computed(() => auth.roleId === 1);
 const isAdmin = computed(() => auth.roleId === 3);
 
 // Filter logic updated for search query
@@ -220,6 +232,14 @@ const loadData = async () => {
     ]);
     courses.value = cData;
     categories.value = catData;
+    if (isStudent.value && auth.user) {
+      const enrollments = await enrollmentApi.myEnrollments(auth.user.id);
+      enrolledCourseIds.value = enrollments
+        .filter((item) => item.status === "active")
+        .map((item) => item.course_id);
+    } else {
+      enrolledCourseIds.value = [];
+    }
   } catch (e) {
     ElMessage.error("加载数据失败");
   } finally {
@@ -324,6 +344,29 @@ const submitCategory = async () => {
 
 const viewDetail = (id: number) => {
   router.push({ name: "course-detail", params: { id } });
+};
+
+const isEnrolled = (courseId: number) => enrolledCourseIds.value.includes(courseId);
+
+const toggleEnrollment = async (course: Course) => {
+  if (!auth.user) return;
+  if (!course.is_active) {
+    ElMessage.warning("课程已下架");
+    return;
+  }
+  try {
+    if (isEnrolled(course.id)) {
+      await enrollmentApi.drop(course.id, auth.user.id);
+      enrolledCourseIds.value = enrolledCourseIds.value.filter((id) => id !== course.id);
+      ElMessage.success("已退课");
+    } else {
+      await enrollmentApi.enroll(course.id, auth.user.id);
+      enrolledCourseIds.value = [...enrolledCourseIds.value, course.id];
+      ElMessage.success("选课成功");
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.detail || "操作失败");
+  }
 };
 
 const canEdit = (course: Course) => {

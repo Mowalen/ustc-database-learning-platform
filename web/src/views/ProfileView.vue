@@ -1,6 +1,6 @@
 <template>
   <div class="profile">
-    <el-card>
+    <el-card class="profile-card">
       <div class="profile__header">
         <div>
           <h2>个人中心</h2>
@@ -16,7 +16,7 @@
       </el-descriptions>
     </el-card>
 
-    <el-card>
+    <el-card class="profile-card">
       <h3>更新信息</h3>
       
       <div v-if="!isVerified">
@@ -126,7 +126,13 @@ const save = async () => {
 <style scoped>
 .profile {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.profile-card {
+  height: 100%;
 }
 
 .profile__header {
@@ -152,5 +158,11 @@ h3 {
 .text-muted {
     font-size: 12px;
     color: var(--color-ink-muted);
+}
+
+@media (max-width: 1024px) {
+  .profile {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

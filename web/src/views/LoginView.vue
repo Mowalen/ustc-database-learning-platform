@@ -111,6 +111,7 @@ import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { authApi } from "@/services/api";
+import { translateAuthDetail } from "@/utils/authMessages";
 import { useAuthStore } from "@/stores/auth";
 
 const auth = useAuthStore();
@@ -154,7 +155,9 @@ const requestResetCode = async () => {
     await authApi.requestPasswordReset(resetForm.email);
     ElMessage.success("验证码已发送");
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "发送验证码失败");
+    const detail = error?.response?.data?.detail;
+    const translated = translateAuthDetail(typeof detail === "string" ? detail : "");
+    ElMessage.error(translated || "发送验证码失败");
   } finally {
     resetLoading.value = false;
   }
@@ -175,7 +178,9 @@ const submitReset = async () => {
     ElMessage.success("密码已重置，请使用新密码登录");
     resetDialogVisible.value = false;
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "重置密码失败");
+    const detail = error?.response?.data?.detail;
+    const translated = translateAuthDetail(typeof detail === "string" ? detail : "");
+    ElMessage.error(translated || "重置密码失败");
   } finally {
     resetLoading.value = false;
   }

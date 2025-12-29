@@ -2,6 +2,15 @@
   <div class="dashboard">
     <!-- 公告看板 (轮播文字模式 - 大屏居中) -->
     <section class="announcement-board">
+      <button
+        class="carousel-nav"
+        type="button"
+        aria-label="上一条公告"
+        :disabled="announcementList.length < 2"
+        @click.stop="prevAnnouncement"
+      >
+        <el-icon><ArrowLeft /></el-icon>
+      </button>
       <div class="board-carousel">
         <Transition name="slide-fade" mode="out-in">
           <div 
@@ -10,11 +19,6 @@
             class="carousel-item"
             @click="router.push('/announcements')"
           >
-            <div class="carousel-left-info">
-              <span class="index">{{ currentIndex + 1 }}/{{ announcementList.length }}</span>
-              <span class="tag">最新</span>
-            </div>
-            
             <div class="carousel-text">
               <div class="carousel-title">{{ currentAnnouncement.title }}</div>
               <div class="carousel-content">{{ currentAnnouncement.content }}</div>
@@ -27,6 +31,15 @@
           </div>
         </Transition>
       </div>
+      <button
+        class="carousel-nav"
+        type="button"
+        aria-label="下一条公告"
+        :disabled="announcementList.length < 2"
+        @click.stop="nextAnnouncement"
+      >
+        <el-icon><ArrowRight /></el-icon>
+      </button>
     </section>
 
     <!-- 欢迎横幅 -->
@@ -93,7 +106,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { courseApi, enrollmentApi, scoreApi, adminApi } from "@/services/api";
 import type { Announcement } from "@/types";
-import { ArrowRight } from "@element-plus/icons-vue";
+import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 import { formatDate } from "@/utils/format";
 
 const auth = useAuthStore();
@@ -121,6 +134,19 @@ const startCarousel = () => {
       currentIndex.value = (currentIndex.value + 1) % announcementList.value.length;
     }
   }, 5000) as unknown as number;
+};
+
+const nextAnnouncement = () => {
+  if (announcementList.value.length === 0) return;
+  currentIndex.value = (currentIndex.value + 1) % announcementList.value.length;
+  startCarousel();
+};
+
+const prevAnnouncement = () => {
+  if (announcementList.value.length === 0) return;
+  const total = announcementList.value.length;
+  currentIndex.value = (currentIndex.value - 1 + total) % total;
+  startCarousel();
 };
 
 const visibleStats = computed(() => {
@@ -205,10 +231,11 @@ onUnmounted(() => {
 
 /* 公告看板 (轮播文字模式) */
 .announcement-board {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
   align-items: center;
-  justify-content: center;
-  padding: 0 24px;
+  gap: 16px;
+  padding: 0 20px;
   background: white;
   border-radius: 16px;
   border: 1px solid var(--color-border);
@@ -224,6 +251,33 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.carousel-nav {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(31, 111, 109, 0.18);
+  background: linear-gradient(180deg, #ffffff 0%, #f8faf9 100%);
+  color: var(--color-teal);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(31, 111, 109, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.carousel-nav:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 111, 109, 0.35);
+  box-shadow: 0 10px 20px rgba(31, 111, 109, 0.15);
+}
+
+.carousel-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .carousel-item {
   position: absolute;
   top: 0;
@@ -234,38 +288,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center; /* Center main content */
   cursor: pointer;
-  padding: 0 40px;
+  padding: 0 24px;
 }
 
 .carousel-item.empty {
   color: var(--color-ink-muted);
   font-size: 16px;
-}
-
-.carousel-left-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* Left align the meta info */
-  gap: 8px;
-  position: absolute;
-  left: 40px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.carousel-item .index {
-  color: var(--color-ink-muted);
-  font-size: 16px; /* Larger index */
-  font-family: monospace;
-}
-
-.carousel-item .tag {
-  background: #FFF7ED;
-  color: #C2410C;
-  font-size: 13px; /* Larger tag */
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-weight: 600;
 }
 
 .carousel-text {
@@ -321,7 +349,7 @@ onUnmounted(() => {
   color: var(--color-ink-muted);
   font-size: 14px;
   position: absolute;
-  right: 40px;
+  right: 32px;
   top: 50%;
   transform: translateY(-50%);
 }
@@ -536,6 +564,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .announcement-board {
+    grid-template-columns: 36px 1fr 36px;
+    padding: 0 12px;
+    height: 220px;
+  }
+
+  .carousel-nav {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .carousel-date {
+    right: 18px;
+  }
+
   .hero {
     flex-direction: column;
     align-items: flex-start;
