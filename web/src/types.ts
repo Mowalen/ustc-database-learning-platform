@@ -84,6 +84,7 @@ export interface Task {
   teacher_id: number;
   title: string;
   description?: string | null;
+  file_url?: string | null;
   type: TaskType;
   deadline?: string | null;
   created_at: string;

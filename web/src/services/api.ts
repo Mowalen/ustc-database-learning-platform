@@ -16,7 +16,7 @@ import type {
 } from "@/types";
 
 const baseURL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:9000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://114.214.188.108:9000/api/v1";
 
 const api: AxiosInstance = axios.create({
   baseURL,
@@ -195,6 +195,7 @@ export const taskApi = {
     teacher_id: number;
     title: string;
     description?: string;
+    file_url?: string;
     type: "assignment" | "exam";
     deadline?: string;
   }): Promise<Task> {
@@ -215,6 +216,7 @@ export const taskApi = {
   async updateTask(taskId: number, payload: {
     title?: string;
     description?: string;
+    file_url?: string;
     type?: "assignment" | "exam";
     deadline?: string;
   }): Promise<Task> {

@@ -113,6 +113,20 @@
         <div class="table-wrap">
           <el-table :data="assignments" style="width: 100%">
             <el-table-column prop="title" label="标题" min-width="200" />
+            <el-table-column label="附件" min-width="120">
+              <template #default="scope">
+                <el-button
+                  v-if="scope.row.file_url"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openTaskFile(scope.row.file_url)"
+                >
+                  查看
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.deadline) }}
@@ -170,6 +184,20 @@
         <div class="table-wrap">
           <el-table :data="exams" style="width: 100%">
             <el-table-column prop="title" label="标题" min-width="200" />
+            <el-table-column label="附件" min-width="120">
+              <template #default="scope">
+                <el-button
+                  v-if="scope.row.file_url"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openTaskFile(scope.row.file_url)"
+                >
+                  查看
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.deadline) }}
@@ -308,8 +336,20 @@
         <el-form-item label="标题">
           <el-input v-model="taskForm.title" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item label="任务说明（可选）">
           <el-input v-model="taskForm.description" type="textarea" />
+        </el-form-item>
+        <el-form-item label="上传任务文件">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleTaskFileUpload"
+            accept=".pdf"
+          >
+            <el-button :loading="uploadingTaskFile" type="primary" plain>
+              上传 PDF
+            </el-button>
+          </el-upload>
+          <span v-if="taskForm.file_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
 
         <el-form-item label="截止时间">
@@ -347,6 +387,10 @@
       <div class="task-detail">
         <h3>{{ activeTask?.title }}</h3>
         <p>{{ activeTask?.description || "暂无描述" }}</p>
+        <div class="task-detail__resource">
+          <a v-if="activeTask?.file_url" :href="activeTask?.file_url" target="_blank">查看附件</a>
+          <span v-else class="text-muted">暂无附件</span>
+        </div>
         <div class="task-detail__meta">
           <span>类型：{{ formatTaskType(activeTask?.type) }}</span>
           <span>截止：{{ formatDate(activeTask?.deadline) }}</span>
@@ -501,6 +545,7 @@ const sectionInfoDialog = ref(false);
 const activeSection = ref<Section | null>(null);
 const uploadingMaterial = ref(false);
 const uploadingVideo = ref(false);
+const uploadingTaskFile = ref(false);
 
 const sectionForm = reactive({
   title: "",
@@ -513,6 +558,7 @@ const sectionForm = reactive({
 const taskForm = reactive({
   title: "",
   description: "",
+  file_url: "",
   type: "assignment" as "assignment" | "exam",
   deadline: "",
 });
@@ -635,6 +681,10 @@ const downloadMaterial = (url: string) => {
   window.open(url, '_blank');
 };
 
+const openTaskFile = (url: string) => {
+  window.open(url, "_blank");
+};
+
 const handleMaterialUpload = async (options: UploadRequestOptions) => {
   const file = options.file as File;
   uploadingMaterial.value = true;
@@ -667,11 +717,28 @@ const handleVideoUpload = async (options: UploadRequestOptions) => {
   }
 };
 
+const handleTaskFileUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingTaskFile.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    taskForm.file_url = data.url;
+    ElMessage.success("任务文件上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "任务文件上传失败");
+  } finally {
+    uploadingTaskFile.value = false;
+  }
+};
+
 const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
   editingTaskId.value = null;
   Object.assign(taskForm, {
     title: "",
     description: "",
+    file_url: "",
     type: type,
     deadline: "",
   });
@@ -683,6 +750,7 @@ const openEditTask = (task: Task) => {
   Object.assign(taskForm, {
     title: task.title,
     description: task.description || "",
+    file_url: task.file_url || "",
     type: task.type,
     deadline: task.deadline || "",
   });
@@ -697,6 +765,7 @@ const saveTask = async () => {
       await taskApi.updateTask(editingTaskId.value, {
         title: taskForm.title,
         description: taskForm.description || undefined,
+        file_url: taskForm.file_url || undefined,
         type: taskForm.type,
         deadline: taskForm.deadline || undefined,
       });
@@ -707,6 +776,7 @@ const saveTask = async () => {
         teacher_id: auth.user.id,
         title: taskForm.title,
         description: taskForm.description || undefined,
+        file_url: taskForm.file_url || undefined,
         type: taskForm.type,
         deadline: taskForm.deadline || undefined,
       });

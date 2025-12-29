@@ -87,7 +87,6 @@
             </template>
           </el-input>
         </el-form-item>
-        <p v-if="resetHint" class="reset-hint">{{ resetHint }}</p>
         <el-form-item label="新密码">
           <el-input v-model="resetForm.new_password" type="password" show-password />
         </el-form-item>
@@ -125,7 +124,6 @@ const form = reactive({
 const rememberMe = ref(false);
 const resetDialogVisible = ref(false);
 const resetLoading = ref(false);
-const resetHint = ref("");
 
 const resetForm = reactive({
   email: "",
@@ -142,7 +140,6 @@ const onSubmit = async () => {
 
 const openResetDialog = () => {
   resetDialogVisible.value = true;
-  resetHint.value = "";
   resetForm.code = "";
   resetForm.new_password = "";
 };
@@ -154,8 +151,7 @@ const requestResetCode = async () => {
   }
   resetLoading.value = true;
   try {
-    const data = await authApi.requestPasswordReset(resetForm.email);
-    resetHint.value = data.code ? `测试验证码：${data.code}` : "验证码已发送";
+    await authApi.requestPasswordReset(resetForm.email);
     ElMessage.success("验证码已发送");
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.detail || "发送验证码失败");
@@ -316,12 +312,6 @@ const submitReset = async () => {
 .forgot-link:hover {
   color: var(--color-teal);
   text-decoration: underline;
-}
-
-.reset-hint {
-  margin: -6px 0 12px;
-  font-size: 12px;
-  color: var(--color-ink-muted);
 }
 
 .submit-btn {
