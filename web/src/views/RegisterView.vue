@@ -181,14 +181,21 @@ const requireTrim = (message: string) => ({
 });
 
 const rules: FormRules = {
-  username: [requireTrim("请输入用户名")],
-  full_name: [requireTrim("请输入姓名")],
+  username: [
+    { required: true, message: "请输入用户名", trigger: "blur" },
+    requireTrim("用户名不能为空")
+  ],
+  full_name: [
+    { required: true, message: "请输入姓名", trigger: "blur" },
+    requireTrim("姓名不能为空")
+  ],
   password: [
     { required: true, message: "请输入密码", trigger: "blur" },
     { min: 6, message: "密码至少 6 位字符", trigger: "blur" },
   ],
   email: [
-    requireTrim("请输入邮箱"),
+    { required: true, message: "请输入邮箱", trigger: "blur" },
+    requireTrim("邮箱不能为空"),
     { type: "email", message: "邮箱格式不正确", trigger: "blur" },
   ],
   role_id: [{ required: true, message: "请选择角色", trigger: "change" }],

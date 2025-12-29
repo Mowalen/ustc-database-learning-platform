@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from app.core.time_utils import get_now
+
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -32,7 +34,7 @@ async def enroll_student(session, course_id: int, student_id: int) -> CourseEnro
     if enrollment:
         if enrollment.status == EnrollmentStatus.DROPPED:
             enrollment.status = EnrollmentStatus.ACTIVE
-            enrollment.enrolled_at = datetime.now(timezone.utc)
+            enrollment.enrolled_at = get_now()
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Already enrolled")
     else:
@@ -40,7 +42,7 @@ async def enroll_student(session, course_id: int, student_id: int) -> CourseEnro
             course_id=course_id,
             student_id=student_id,
             status=EnrollmentStatus.ACTIVE,
-            enrolled_at=datetime.now(timezone.utc),
+            enrolled_at=get_now(),
         )
         session.add(enrollment)
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from app.core.time_utils import get_now
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -69,10 +70,10 @@ async def submit_task(session, task_id: int, payload: SubmissionCreate) -> Submi
     task = await get_task(session, task_id)
     await _get_student_enrollment(session, task.course_id, payload.student_id)
 
-    now = datetime.now(timezone.utc)
+    now = get_now()
     deadline = task.deadline
     if deadline and deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=timezone.utc)
+        deadline = deadline.replace(tzinfo=timezone.utc) # keeping this as fallback just in case, or should be APP_TIMEZONE?
     status_value = SubmissionStatus.SUBMITTED
     if deadline and now > deadline:
         status_value = SubmissionStatus.LATE
@@ -119,7 +120,8 @@ async def apply_grade(session, submission: Submission, payload: GradeUpdate) -> 
     submission.score = payload.score
     submission.feedback = payload.feedback
     submission.status = payload.status or SubmissionStatus.GRADED
-    submission.graded_at = datetime.now(timezone.utc)
+    submission.graded_at = get_now()
+
 
     await session.commit()
     await session.refresh(submission)

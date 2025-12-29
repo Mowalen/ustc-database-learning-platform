@@ -4,7 +4,7 @@ from typing import Iterable
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, func
-from app.models import Submission, Task, Course, SubmissionStatus
+from app.models import Submission, Task, Course, SubmissionStatus, CourseEnrollment, EnrollmentStatus
 
 async def get_teacher_pending_grading_count(session, teacher_id: int) -> int:
     stmt = (

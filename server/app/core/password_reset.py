@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import secrets
+from app.core.time_utils import get_now, APP_TIMEZONE
 
 
 @dataclass
@@ -14,9 +15,10 @@ class PasswordResetStore:
         self._ttl = timedelta(minutes=ttl_minutes)
         self._entries: dict[str, ResetEntry] = {}
 
+
     def issue(self, email: str) -> str:
         code = f"{secrets.randbelow(1_000_000):06d}"
-        expires_at = datetime.now(timezone.utc) + self._ttl
+        expires_at = get_now() + self._ttl
         self._entries[email.lower()] = ResetEntry(code=code, expires_at=expires_at)
         return code
 
@@ -25,7 +27,7 @@ class PasswordResetStore:
         entry = self._entries.get(key)
         if not entry:
             return False
-        if datetime.now(timezone.utc) > entry.expires_at:
+        if get_now() > entry.expires_at:
             self._entries.pop(key, None)
             return False
         if entry.code != code:

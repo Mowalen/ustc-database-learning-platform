@@ -5,6 +5,7 @@ const authDetailMap: Record<string, string> = {
   "Email not found": "邮箱未找到",
   "Invalid or expired code": "验证码无效或已过期",
   "Failed to send verification email. Please try again later.": "验证码发送失败，请稍后再试",
+  "The user with this email already exists in the system": "该邮箱已被注册",
 };
 
 const fieldLabels: Record<string, string> = {

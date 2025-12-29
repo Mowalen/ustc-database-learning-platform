@@ -12,6 +12,8 @@ class UserBase(BaseModel):
     is_active: Optional[bool] = True
 
 class UserCreate(UserBase):
+    email: EmailStr
+    full_name: str
     password: str
     role_id: int
 

@@ -52,6 +52,12 @@ async def register_user(
             status_code=400,
             detail="The user with this username already exists in the system",
         )
+    user = await crud_user.get_by_email(db, email=user_in.email)
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system",
+        )
     user = await crud_user.create(db, obj_in=user_in)
     return user
 
