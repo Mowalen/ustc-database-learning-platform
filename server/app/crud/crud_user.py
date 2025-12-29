@@ -32,6 +32,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
     async def authenticate(self, db: AsyncSession, *, username: str, password: str) -> Optional[User]:
         user = await self.get_by_username(db, username=username)
         if not user:
+            user = await self.get_by_email(db, email=username)
+        if not user:
             return None
         if not verify_password(password, user.password_hash):
             return None

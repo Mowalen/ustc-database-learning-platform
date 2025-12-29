@@ -11,11 +11,51 @@ async def get_teacher_pending_grading_count(session, teacher_id: int) -> int:
         select(func.count(Submission.id))
         .join(Task, Submission.task_id == Task.id)
         .join(Course, Task.course_id == Course.id)
+        .join(CourseEnrollment, (CourseEnrollment.course_id == Course.id) & (CourseEnrollment.student_id == Submission.student_id))
         .where(Course.teacher_id == teacher_id)
         .where(Submission.status.in_([SubmissionStatus.SUBMITTED, SubmissionStatus.LATE]))
+        .where(CourseEnrollment.status == EnrollmentStatus.ACTIVE)
     )
     result = await session.execute(stmt)
     return result.scalar_one()
+
+
+async def get_student_pending_task_count(session, student_id: int) -> int:
+    # 1. Get active enrolled course IDs
+    from app.models import CourseEnrollment, EnrollmentStatus
+    stmt_courses = select(CourseEnrollment.course_id).where(
+        CourseEnrollment.student_id == student_id,
+        CourseEnrollment.status == EnrollmentStatus.ACTIVE
+    )
+    result_courses = await session.execute(stmt_courses)
+    course_ids = result_courses.scalars().all()
+
+    if not course_ids:
+        return 0
+
+    # 2. Get submitted task IDs
+    stmt_submissions = select(Submission.task_id).where(Submission.student_id == student_id)
+    result_submissions = await session.execute(stmt_submissions)
+    submitted_task_ids = set(result_submissions.scalars().all())
+
+    # 3. Count tasks in these courses that are NOT in submitted_task_ids
+    # Note: We can do this in one complex SQL query, but this is readable and reasonably efficient for typical sizes.
+    # SQL way:
+    # SELECT count(*) FROM tasks 
+    # WHERE course_id IN (...) 
+    # AND id NOT IN (SELECT task_id FROM submissions WHERE student_id = ...)
+    
+    stmt_count = (
+        select(func.count(Task.id))
+        .where(Task.course_id.in_(course_ids))
+    )
+    
+    if submitted_task_ids:
+        stmt_count = stmt_count.where(Task.id.not_in(submitted_task_ids))
+        
+    result = await session.execute(stmt_count)
+    return result.scalar_one()
+
 
 
 async def get_scores_for_student(session, student_id: int) -> list[dict]:

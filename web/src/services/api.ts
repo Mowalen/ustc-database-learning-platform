@@ -282,6 +282,10 @@ export const scoreApi = {
     const { data } = await api.get<{ count: number }>("/teacher/pending-grading-count");
     return data.count;
   },
+  async getStudentPendingTasksCount(): Promise<number> {
+    const { data } = await api.get<{ count: number }>("/student/pending-tasks-count");
+    return data.count;
+  },
 };
 
 export const adminApi = {

@@ -200,14 +200,7 @@ const loadStats = async () => {
     stats.value[1].value = String(activeEnrollments.length);
 
     try {
-      const tasksPromises = activeEnrollments.map(e => taskApi.listTasks(e.course_id));
-      const tasksLists = await Promise.all(tasksPromises);
-      const allTasks = tasksLists.flat();
-
-      const myScores = await scoreApi.myScores(auth.user.id);
-      const submittedTaskIds = new Set(myScores.map(s => s.task_id));
-
-      const pendingCount = allTasks.filter((t: any) => !submittedTaskIds.has(t.id)).length;
+      const pendingCount = await scoreApi.getStudentPendingTasksCount();
       stats.value[2].value = String(pendingCount);
     } catch (error) {
       console.error("Failed to load student tasks stats", error);
