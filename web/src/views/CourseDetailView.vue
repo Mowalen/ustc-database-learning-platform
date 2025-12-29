@@ -370,11 +370,17 @@
 
     <el-dialog v-model="submitDialog" title="提交任务" width="520px">
       <el-form :model="submitForm" label-position="top">
-        <el-form-item label="答案内容">
-          <el-input v-model="submitForm.answer_text" type="textarea" />
-        </el-form-item>
-        <el-form-item label="附件 URL">
-          <el-input v-model="submitForm.file_url" placeholder="可选" />
+        <el-form-item label="上传答案 PDF">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleSubmissionUpload"
+            accept=".pdf"
+          >
+            <el-button :loading="uploadingSubmissionFile" type="primary" plain>
+              上传 PDF
+            </el-button>
+          </el-upload>
+          <span v-if="submitForm.file_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -404,7 +410,11 @@
     <el-dialog v-model="submissionsDialog" title="提交记录" width="90%">
       <el-table :data="submissions" style="width: 100%">
         <el-table-column prop="student.username" label="学生" min-width="120" />
-        <el-table-column prop="answer_text" label="答案" min-width="200" />
+        <el-table-column label="答案" min-width="200">
+          <template #default="scope">
+            {{ scope.row.answer_text || "-" }}
+          </template>
+        </el-table-column>
         <el-table-column label="附件" min-width="100">
           <template #default="scope">
             <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
@@ -546,6 +556,7 @@ const activeSection = ref<Section | null>(null);
 const uploadingMaterial = ref(false);
 const uploadingVideo = ref(false);
 const uploadingTaskFile = ref(false);
+const uploadingSubmissionFile = ref(false);
 
 const sectionForm = reactive({
   title: "",
@@ -564,7 +575,6 @@ const taskForm = reactive({
 });
 
 const submitForm = reactive({
-  answer_text: "",
   file_url: "",
 });
 const gradeForm = reactive({
@@ -733,6 +743,22 @@ const handleTaskFileUpload = async (options: UploadRequestOptions) => {
   }
 };
 
+const handleSubmissionUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingSubmissionFile.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    submitForm.file_url = data.url;
+    ElMessage.success("作业附件上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "附件上传失败");
+  } finally {
+    uploadingSubmissionFile.value = false;
+  }
+};
+
 const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
   editingTaskId.value = null;
   Object.assign(taskForm, {
@@ -847,16 +873,19 @@ const submitGrade = async () => {
 
 const openSubmit = (task: Task) => {
   activeTask.value = task;
-  Object.assign(submitForm, { answer_text: "", file_url: "" });
+  Object.assign(submitForm, { file_url: "" });
   submitDialog.value = true;
 };
 
 const submitTask = async () => {
   if (!auth.user || !activeTask.value) return;
+  if (!submitForm.file_url) {
+    ElMessage.warning("请先上传 PDF 附件");
+    return;
+  }
   try {
     await taskApi.submitTask(activeTask.value.id, {
       student_id: auth.user.id,
-      answer_text: submitForm.answer_text || undefined,
       file_url: submitForm.file_url || undefined,
     });
     ElMessage.success("提交成功");
