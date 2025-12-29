@@ -4,24 +4,8 @@
       <div class="brand">
         <div class="brand__logo">USTC</div>
         <div>
-          <h2>数据库学习平台</h2>
+          <h2>个人中心</h2>
           <span>教学 · 练习 · 考核</span>
-        </div>
-      </div>
-      <div class="user-card">
-        <div class="avatar">
-          <img
-            v-if="auth.user?.avatar_url"
-            :src="auth.user.avatar_url"
-            alt="avatar"
-          />
-          <span v-else>{{
-            auth.user?.username?.slice(0, 2)?.toUpperCase()
-          }}</span>
-        </div>
-        <div>
-          <strong>{{ auth.user?.full_name || auth.user?.username }}</strong>
-          <small>{{ auth.roleLabel }}</small>
         </div>
       </div>
       <el-menu
@@ -38,21 +22,42 @@
           <span>{{ item.label }}</span>
         </el-menu-item>
       </el-menu>
-      <div class="sidebar__footer">
-        <el-button type="primary" plain @click="goProfile">个人设置</el-button>
-        <el-button type="danger" plain @click="logout">退出登录</el-button>
-      </div>
     </aside>
 
     <main class="content">
       <header class="topbar">
-        <div>
+        <div v-if="route.name !== 'profile'">
           <h1>{{ pageTitle }}</h1>
           <p>{{ pageDesc }}</p>
         </div>
+        <div v-else></div>
         <div class="topbar__actions">
+           <el-dropdown trigger="click">
+             <div class="header-user">
+               <div class="header-avatar">
+                 <img
+                    v-if="auth.user?.avatar_url"
+                    :src="auth.user.avatar_url"
+                    alt="avatar"
+                  />
+                  <span v-else>{{
+                    auth.user?.username?.slice(0, 2)?.toUpperCase()
+                  }}</span>
+               </div>
+               <div class="header-info">
+                  <strong>{{ auth.user?.full_name || auth.user?.username }}</strong>
+                  <small>{{ auth.roleLabel }}</small>
+               </div>
+               <el-icon style="margin-left: 8px"><ArrowDown /></el-icon>
+             </div>
+             <template #dropdown>
+               <el-dropdown-menu>
+                 <el-dropdown-item @click="goProfile">个人设置</el-dropdown-item>
+                 <el-dropdown-item divided @click="logout" style="color: var(--el-color-danger)">退出登录</el-dropdown-item>
+               </el-dropdown-menu>
+             </template>
+           </el-dropdown>
           <el-button class="mobile-toggle" @click="toggleMenu">菜单</el-button>
-          <el-tag type="warning" effect="light">{{ auth.roleLabel }}</el-tag>
         </div>
       </header>
       <section class="content-body">
@@ -66,6 +71,7 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { ArrowDown } from "@element-plus/icons-vue";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -165,42 +171,49 @@ const toggleMenu = () => {
   color: var(--color-ink-muted);
 }
 
-.user-card {
+.header-user {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 14px;
-  background: rgba(209, 143, 59, 0.08);
-  border-radius: 16px;
-  margin-bottom: 24px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0,0,0,0.05);
+  cursor: pointer;
 }
 
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+.header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: rgba(31, 111, 109, 0.2);
   display: grid;
   place-items: center;
   font-weight: 700;
   color: var(--color-teal);
   overflow: hidden;
+  font-size: 14px;
 }
 
-.avatar img {
+.header-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.user-card strong {
-  display: block;
+.header-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.header-info strong {
   font-size: 14px;
 }
 
-.user-card small {
-  color: var(--color-ink-muted);
+.header-info small {
   font-size: 12px;
+  color: var(--color-ink-muted);
 }
 
 .nav-menu {

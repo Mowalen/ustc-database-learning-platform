@@ -113,3 +113,15 @@ async def list_submissions(
     if current_user.role_id == 2 and course and course.teacher_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
     return await crud_tasks.list_submissions(db, task_id)
+
+
+@router.get("/courses/{course_id}/my-submissions", response_model=list[SubmissionOut])
+async def list_my_submissions(
+    course_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only students can list their submissions")
+    return await crud_tasks.list_student_submissions(db, course_id, current_user.id)
+

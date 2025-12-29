@@ -113,6 +113,7 @@ export const useAuthStore = defineStore("auth", {
     async updateProfile(payload: {
       full_name?: string;
       password?: string;
+      avatar_url?: string;
     }) {
       this.loading = true;
       try {

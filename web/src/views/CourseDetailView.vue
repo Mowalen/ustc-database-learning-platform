@@ -112,8 +112,8 @@
         </div>
         <div class="table-wrap">
           <el-table :data="assignments" style="width: 100%">
-            <el-table-column prop="title" label="标题" min-width="200" />
-            <el-table-column label="附件" min-width="120">
+            <el-table-column align="left" header-align="left" prop="title" label="标题" min-width="200" />
+            <el-table-column align="left" header-align="left" label="附件" min-width="120">
               <template #default="scope">
                 <el-button
                   v-if="scope.row.file_url"
@@ -127,22 +127,43 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="deadline" label="截止时间" min-width="180">
+            <el-table-column align="left" header-align="left" prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.deadline) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="320">
+            <el-table-column align="left" header-align="left" label="操作" min-width="320">
               <template #default="scope">
                 <el-button
                   v-if="isStudent"
                   size="small"
                   type="success"
                   plain
+                  :disabled="checkOverdue(scope.row.deadline)"
                   @click="openSubmit(scope.row)"
                 >
-                  提交
+                  {{ getSubmissionForTask(scope.row.id) ? '重新提交' : '提交' }}
                 </el-button>
+                <template v-if="isStudent && getSubmissionForTask(scope.row.id)">
+                    <el-button 
+                        size="small" 
+                        type="primary" 
+                        plain 
+                        v-if="getSubmissionForTask(scope.row.id)?.file_url"
+                        @click="openTaskFile(getSubmissionForTask(scope.row.id)?.file_url!)"
+                    >
+                        查看提交附件
+                    </el-button>
+                     <el-button 
+                        size="small" 
+                        type="info" 
+                        plain
+                        @click="viewSubmissionDetails(getSubmissionForTask(scope.row.id)!)"
+                    >
+                        查看详情
+                    </el-button>
+                </template>
+
                 <el-button
                   v-if="isCourseOwner"
                   size="small"
@@ -183,8 +204,8 @@
         </div>
         <div class="table-wrap">
           <el-table :data="exams" style="width: 100%">
-            <el-table-column prop="title" label="标题" min-width="200" />
-            <el-table-column label="附件" min-width="120">
+            <el-table-column align="left" header-align="left" prop="title" label="标题" min-width="200" />
+            <el-table-column align="left" header-align="left" label="附件" min-width="120">
               <template #default="scope">
                 <el-button
                   v-if="scope.row.file_url"
@@ -198,22 +219,42 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="deadline" label="截止时间" min-width="180">
+            <el-table-column align="left" header-align="left" prop="deadline" label="截止时间" min-width="180">
               <template #default="scope">
                 {{ formatDate(scope.row.deadline) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="320">
+            <el-table-column align="left" header-align="left" label="操作" min-width="320">
               <template #default="scope">
                 <el-button
                   v-if="isStudent"
                   size="small"
                   type="success"
                   plain
+                  :disabled="checkOverdue(scope.row.deadline)"
                   @click="openSubmit(scope.row)"
                 >
-                  提交
+                  {{ getSubmissionForTask(scope.row.id) ? '重新提交' : '提交' }}
                 </el-button>
+                <template v-if="isStudent && getSubmissionForTask(scope.row.id)">
+                    <el-button 
+                        size="small" 
+                        type="primary" 
+                        plain 
+                        v-if="getSubmissionForTask(scope.row.id)?.file_url"
+                        @click="openTaskFile(getSubmissionForTask(scope.row.id)?.file_url!)"
+                    >
+                        查看提交附件
+                    </el-button>
+                     <el-button 
+                        size="small" 
+                        type="info" 
+                        plain
+                        @click="viewSubmissionDetails(getSubmissionForTask(scope.row.id)!)"
+                    >
+                        查看详情
+                    </el-button>
+                </template>
                 <el-button
                   v-if="isCourseOwner"
                   size="small"
@@ -411,14 +452,15 @@
 
     <el-dialog v-model="submissionsDialog" title="提交记录" width="90%">
         <el-table :data="sortedSubmissions" style="width: 100%" @sort-change="handleSubmissionSort">
-          <el-table-column prop="student.username" label="学生" min-width="120" />
-          <el-table-column label="附件" min-width="100">
+          <el-table-column align="left" header-align="left" prop="student.username" label="学生" min-width="120" />
+          <el-table-column align="left" header-align="left" label="附件" min-width="100">
             <template #default="scope">
               <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
               <span v-else>-</span>
             </template>
         </el-table-column>
         <el-table-column
+          align="left" header-align="left"
           prop="score"
           label="分数"
           min-width="80"
@@ -428,17 +470,17 @@
             {{ scope.row.score ?? "-" }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" min-width="100">
+        <el-table-column align="left" header-align="left" label="状态" min-width="100">
           <template #default="scope">
             {{ formatStatus(scope.row.status) }}
           </template>
         </el-table-column>
-        <el-table-column label="评分时间" min-width="160">
+        <el-table-column align="left" header-align="left" label="评分时间" min-width="160">
           <template #default="scope">
             {{ formatDate(scope.row.graded_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="100">
+        <el-table-column align="left" header-align="left" label="操作" min-width="100">
           <template #default="scope">
             <el-button size="small" @click="openGrade(scope.row)">评分</el-button>
           </template>
@@ -476,6 +518,24 @@
         </video>
       </div>
     </el-dialog>
+
+    <el-dialog v-model="submissionDetailDialog" title="提交详情" width="520px">
+      <div class="submission-detail" v-if="activeSubmissionDetail">
+         <p><strong>状态：</strong> {{ formatStatus(activeSubmissionDetail.status) }}</p>
+         <p><strong>提交时间：</strong> {{ formatDate(activeSubmissionDetail.submitted_at) }}</p>
+         <p><strong>分数：</strong> {{ activeSubmissionDetail.score ?? '暂无' }}</p>
+         <p><strong>评语：</strong> {{ activeSubmissionDetail.feedback || '暂无' }}</p>
+         <div v-if="activeSubmissionDetail.file_url" style="margin-top: 10px;">
+             <strong>提交附件：</strong>
+             <el-button type="primary" link @click="openTaskFile(activeSubmissionDetail?.file_url!)">
+                点击查看
+             </el-button>
+         </div>
+      </div>
+      <template #footer>
+        <el-button @click="submissionDetailDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -491,7 +551,7 @@ import {
   uploadApi,
 } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
-import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent } from "@/types";
+import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent, Submission } from "@/types";
 import { ArrowRight, Document, VideoPlay, Folder, Download, CaretRight } from "@element-plus/icons-vue";
 import { translateTaskDetail } from "@/utils/taskMessages";
 
@@ -504,6 +564,7 @@ const course = ref<Course | null>(null);
 const sections = ref<Section[]>([]);
 const tasks = ref<Task[]>([]);
 const students = ref<EnrollmentWithStudent[]>([]);
+const mySubmissions = ref<Submission[]>([]);
 const activeTab = ref("sections");
 
 const sectionTree = computed(() => {
@@ -640,6 +701,25 @@ const gradeForm = reactive({
   feedback: "",
 });
 
+const submissionDetailDialog = ref(false);
+const activeSubmissionDetail = ref<Submission | null>(null);
+
+const checkOverdue = (deadline: string | undefined): boolean => {
+    if (!deadline) return false;
+    const deadlineTime = new Date(deadline).getTime();
+    if (Number.isNaN(deadlineTime)) return false;
+    return deadlineTime < Date.now();
+};
+
+const getSubmissionForTask = (taskId: number) => {
+  return mySubmissions.value.find((s) => s.task_id === taskId);
+};
+
+const viewSubmissionDetails = (submission: Submission) => {
+  activeSubmissionDetail.value = submission;
+  submissionDetailDialog.value = true;
+};
+
 const isTeacher = computed(() => auth.roleId === 2);
 const isStudent = computed(() => auth.roleId === 1);
 const isEnrolled = ref(false);
@@ -661,6 +741,7 @@ const loadData = async () => {
     if (isStudent.value && auth.user) {
       const enrollments = await enrollmentApi.myEnrollments(auth.user.id);
       isEnrolled.value = enrollments.some((enroll) => enroll.course_id === courseId);
+      mySubmissions.value = await taskApi.getMySubmissions(courseId);
     }
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.detail || "加载课程信息失败");

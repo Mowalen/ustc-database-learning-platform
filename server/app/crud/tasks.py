@@ -161,3 +161,14 @@ async def delete_task(session, task_id: int) -> Task:
     await session.delete(task)
     await session.commit()
     return task
+
+
+async def list_student_submissions(session, course_id: int, student_id: int) -> list[Submission]:
+    stmt = (
+        select(Submission)
+        .join(Task)
+        .where(Task.course_id == course_id, Submission.student_id == student_id)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+

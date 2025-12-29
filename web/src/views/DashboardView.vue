@@ -49,7 +49,7 @@
           <span class="hero__wave">👋</span>
           <h2>你好，{{ auth.user?.full_name || auth.user?.username }}</h2>
         </div>
-        <p>这里是你的教学与学习指挥台，集中查看课程、作业、成绩和公告动态。</p>
+        <p>{{ welcomeMessage }}</p>
       </div>
       <div class="hero__badge">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -173,6 +173,17 @@ const visibleStats = computed(() => {
     ];
   }
   return stats.value;
+});
+
+const welcomeMessage = computed(() => {
+  if (auth.roleId === 1) {
+    return "这里是你的学习指挥台，集中查看课程、作业、成绩和公告动态。";
+  } else if (auth.roleId === 2) {
+    return "这里是您的教学工作台，您可以管理课程内容、发布作业任务、批改学生成绩。";
+  } else if (auth.roleId === 3) {
+    return "这里是系统管理中心，您可以维护用户信息、管理所有课程与公告内容。";
+  }
+  return "这里是你的教学与学习指挥台，集中查看课程、作业、成绩和公告动态。";
 });
 
 const loadStats = async () => {

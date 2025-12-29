@@ -83,6 +83,7 @@ export const userApi = {
   async updateMe(payload: {
     full_name?: string;
     password?: string;
+    avatar_url?: string;
   }): Promise<User> {
     const { data } = await api.put<User>("/users/me", payload);
     return data;
@@ -252,6 +253,10 @@ export const taskApi = {
     const { data } = await api.get<SubmissionWithStudent[]>(
       `/tasks/${taskId}/submissions`
     );
+    return data;
+  },
+  async getMySubmissions(courseId: number): Promise<Submission[]> {
+    const { data } = await api.get<Submission[]>(`/courses/${courseId}/my-submissions`);
     return data;
   },
 };

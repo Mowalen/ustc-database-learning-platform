@@ -32,6 +32,7 @@ async def update_user_me(
     db: AsyncSession = Depends(get_db),
     password: str = Body(None),
     full_name: str = Body(None),
+    avatar_url: str = Body(None),
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
     # Update full_name
@@ -41,6 +42,11 @@ async def update_user_me(
     # Update password (hash it first)
     if password is not None:
         current_user.password_hash = get_password_hash(password)
+    
+    # Update avatar_url
+    if avatar_url is not None:
+        current_user.avatar_url = avatar_url
+
     
     db.add(current_user)
     await db.commit()
