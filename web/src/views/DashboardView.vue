@@ -17,7 +17,7 @@
             v-if="currentAnnouncement"
             :key="currentAnnouncement.id"
             class="carousel-item"
-            @click="router.push('/announcements')"
+            style="cursor: default;"
           >
             <div class="carousel-text">
               <div class="carousel-title">{{ currentAnnouncement.title }}</div>
@@ -104,7 +104,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { courseApi, enrollmentApi, scoreApi, adminApi } from "@/services/api";
+import { courseApi, enrollmentApi, scoreApi, adminApi, taskApi } from "@/services/api";
 import type { Announcement } from "@/types";
 import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 import { formatDate } from "@/utils/format";
@@ -169,7 +169,7 @@ const visibleStats = computed(() => {
     return [
       { label: "课程总量", value: stats.value[0].value, desc: "系统内已发布课程" },
       { label: "我的选课", value: stats.value[1].value, desc: "当前进行中的学习" },
-      { label: "待完成作业", value: stats.value[2].value, desc: "等待提交的作业" },
+      { label: "待完成任务", value: stats.value[2].value, desc: "等待提交的任务" },
     ];
   }
   return stats.value;
@@ -196,17 +196,36 @@ const loadStats = async () => {
 
   if (auth.roleId === 1 && auth.user) {
     const enrollments = await enrollmentApi.myEnrollments(auth.user.id);
-    stats.value[1].value = String(enrollments.length);
+    const activeEnrollments = enrollments.filter(e => e.status === 'active');
+    stats.value[1].value = String(activeEnrollments.length);
 
-    const scores = await scoreApi.myScores(auth.user.id);
-    const pending = scores.filter((score) => !score.score).length;
-    stats.value[2].value = String(pending);
+    try {
+      const tasksPromises = activeEnrollments.map(e => taskApi.listTasks(e.course_id));
+      const tasksLists = await Promise.all(tasksPromises);
+      const allTasks = tasksLists.flat();
+
+      const myScores = await scoreApi.myScores(auth.user.id);
+      const submittedTaskIds = new Set(myScores.map(s => s.task_id));
+
+      const pendingCount = allTasks.filter((t: any) => !submittedTaskIds.has(t.id)).length;
+      stats.value[2].value = String(pendingCount);
+    } catch (error) {
+      console.error("Failed to load student tasks stats", error);
+      stats.value[2].value = "-";
+    }
   }
 
   if (auth.roleId === 2 && auth.user) {
     const myCourses = courses.filter(c => c.teacher_id === auth.user?.id);
     stats.value[1].value = String(myCourses.length);
-    stats.value[2].value = "0"; 
+    
+    try {
+      const pendingGradingCount = await scoreApi.getTeacherPendingGradingCount();
+      stats.value[2].value = String(pendingGradingCount);
+    } catch (error) {
+       console.error("Failed to load teacher grading stats", error);
+       stats.value[2].value = "-";
+    }
   }
 
   if (auth.roleId === 3) {

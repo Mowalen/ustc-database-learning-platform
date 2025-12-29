@@ -299,6 +299,7 @@ const submitCourse = async () => {
         description: courseForm.description || null,
         cover_url: courseForm.cover_url || null,
         category_id: courseForm.category_id ?? null,
+        is_active: courseForm.is_active,
       });
       
       // Handle is_active change if needed and if API allows or requires separate call

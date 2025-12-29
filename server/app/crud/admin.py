@@ -157,13 +157,7 @@ async def delete_announcement(session, announcement_id: int) -> Announcement:
     if not announcement:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Announcement not found")
 
-    # Hard delete example:
-    # await session.delete(announcement)
-    # await session.commit()
-    # return announcement
-
-    # Soft delete:
-    announcement.is_active = False
+    # Hard delete
+    await session.delete(announcement)
     await session.commit()
-    await session.refresh(announcement)
     return announcement

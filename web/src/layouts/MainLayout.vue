@@ -85,7 +85,6 @@ const menuItems = [
   { path: "/enrollments", label: "我的选课", roles: [1] },
   { path: "/tasks", label: "作业与考试", roles: [] },
   { path: "/scores", label: "成绩反馈", roles: [] },
-  { path: "/announcements", label: "公告看板", roles: [3] },
   { path: "/admin", label: "用户管理", roles: [3] },
   { path: "/admin/announcements", label: "公告管理", roles: [3] },
 ];

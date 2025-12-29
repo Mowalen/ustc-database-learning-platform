@@ -3,9 +3,19 @@ import io
 from typing import Iterable
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
+from app.models import Submission, Task, Course, SubmissionStatus
 
-from app.models import Submission, Task
+async def get_teacher_pending_grading_count(session, teacher_id: int) -> int:
+    stmt = (
+        select(func.count(Submission.id))
+        .join(Task, Submission.task_id == Task.id)
+        .join(Course, Task.course_id == Course.id)
+        .where(Course.teacher_id == teacher_id)
+        .where(Submission.status.in_([SubmissionStatus.SUBMITTED, SubmissionStatus.LATE]))
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one()
 
 
 async def get_scores_for_student(session, student_id: int) -> list[dict]:
@@ -46,7 +56,7 @@ async def get_scores_for_course(session, course_id: int) -> list[dict]:
     result = await session.execute(stmt)
     rows = result.all()
     if not rows:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No scores for course")
+        return []
 
     scores = []
     for submission, task in rows:

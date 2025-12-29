@@ -522,7 +522,7 @@
     <el-dialog v-model="submissionDetailDialog" title="提交详情" width="520px">
       <div class="submission-detail" v-if="activeSubmissionDetail">
          <p><strong>状态：</strong> {{ formatStatus(activeSubmissionDetail.status) }}</p>
-         <p><strong>提交时间：</strong> {{ formatDate(activeSubmissionDetail.submitted_at) }}</p>
+
          <p><strong>分数：</strong> {{ activeSubmissionDetail.score ?? '暂无' }}</p>
          <p><strong>评语：</strong> {{ activeSubmissionDetail.feedback || '暂无' }}</p>
          <div v-if="activeSubmissionDetail.file_url" style="margin-top: 10px;">
@@ -744,7 +744,10 @@ const loadData = async () => {
       mySubmissions.value = await taskApi.getMySubmissions(courseId);
     }
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "加载课程信息失败");
+    const detail = error?.response?.data?.detail;
+    if (detail !== "Course not found or inactive") {
+      ElMessage.error(detail || "加载课程信息失败");
+    }
   } finally {
     loading.value = false;
   }

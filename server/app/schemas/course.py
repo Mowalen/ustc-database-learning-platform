@@ -29,6 +29,7 @@ class CourseCreate(CourseBase):
 
 class CourseUpdate(CourseBase):
     title: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class Course(CourseBase):
     id: int
