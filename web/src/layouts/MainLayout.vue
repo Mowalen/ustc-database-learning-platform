@@ -4,18 +4,8 @@
       <div class="brand">
         <div class="brand__logo">USTC</div>
         <div>
-          <h2>数据库学习平台</h2>
+          <h2>个人中心</h2>
           <span>教学 · 练习 · 考核</span>
-        </div>
-      </div>
-      <div class="user-card">
-        <div class="avatar">
-          <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" alt="avatar" />
-          <span v-else>{{ auth.user?.username?.slice(0, 2)?.toUpperCase() }}</span>
-        </div>
-        <div>
-          <strong>{{ auth.user?.full_name || auth.user?.username }}</strong>
-          <small>{{ auth.roleLabel }}</small>
         </div>
       </div>
       <el-menu
@@ -32,21 +22,42 @@
           <span>{{ item.label }}</span>
         </el-menu-item>
       </el-menu>
-      <div class="sidebar__footer">
-        <el-button type="primary" plain @click="goProfile">个人设置</el-button>
-        <el-button type="danger" plain @click="logout">退出登录</el-button>
-      </div>
     </aside>
 
     <main class="content">
       <header class="topbar">
-        <div>
+        <div v-if="route.name !== 'profile'">
           <h1>{{ pageTitle }}</h1>
-          <p>专注数据库课程的教学流程与学习体验。</p>
+          <p>{{ pageDesc }}</p>
         </div>
+        <div v-else></div>
         <div class="topbar__actions">
+           <el-dropdown trigger="click">
+             <div class="header-user">
+               <div class="header-avatar">
+                 <img
+                    v-if="auth.user?.avatar_url"
+                    :src="auth.user.avatar_url"
+                    alt="avatar"
+                  />
+                  <span v-else>{{
+                    auth.user?.username?.slice(0, 2)?.toUpperCase()
+                  }}</span>
+               </div>
+               <div class="header-info">
+                  <strong>{{ auth.user?.full_name || auth.user?.username }}</strong>
+                  <small>{{ auth.roleLabel }}</small>
+               </div>
+               <el-icon style="margin-left: 8px"><ArrowDown /></el-icon>
+             </div>
+             <template #dropdown>
+               <el-dropdown-menu>
+                 <el-dropdown-item @click="goProfile">个人设置</el-dropdown-item>
+                 <el-dropdown-item divided @click="logout" style="color: var(--el-color-danger)">退出登录</el-dropdown-item>
+               </el-dropdown-menu>
+             </template>
+           </el-dropdown>
           <el-button class="mobile-toggle" @click="toggleMenu">菜单</el-button>
-          <el-tag type="warning" effect="light">{{ auth.roleLabel }}</el-tag>
         </div>
       </header>
       <section class="content-body">
@@ -60,6 +71,7 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { ArrowDown } from "@element-plus/icons-vue";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -67,14 +79,14 @@ const router = useRouter();
 const mobileMenuOpen = ref(false);
 
 const menuItems = [
-  { path: "/", label: "仪表盘", roles: [1, 2, 3] },
-  { path: "/courses", label: "课程中心", roles: [1, 2, 3] },
+  { path: "/", label: "我的主页", roles: [1, 2, 3] },
+  { path: "/courses", label: "课程管理", roles: [1, 2, 3] },
+  { path: "/teaching", label: "我的授课", roles: [2] },
   { path: "/enrollments", label: "我的选课", roles: [1] },
-  { path: "/tasks", label: "作业与考试", roles: [1, 2] },
-  { path: "/scores", label: "成绩反馈", roles: [1, 2] },
-  { path: "/announcements", label: "公告看板", roles: [1, 2, 3] },
-  { path: "/admin", label: "管理后台", roles: [3] },
-  { path: "/profile", label: "个人中心", roles: [1, 2, 3] },
+  { path: "/tasks", label: "作业与考试", roles: [] },
+  { path: "/scores", label: "成绩反馈", roles: [] },
+  { path: "/admin", label: "用户管理", roles: [3] },
+  { path: "/admin/announcements", label: "公告管理", roles: [3] },
 ];
 
 const visibleMenuItems = computed(() =>
@@ -89,6 +101,13 @@ const activePath = computed(() => {
 const pageTitle = computed(() => {
   const item = menuItems.find((m) => m.path === activePath.value);
   return item?.label || "学习平台";
+});
+
+const pageDesc = computed(() => {
+  if (activePath.value === "/admin") {
+    return "管理用户账号、课程状态与系统运行。";
+  }
+  return "专注数据库课程的教学流程与学习体验。";
 });
 
 const logout = () => {
@@ -129,7 +148,11 @@ const toggleMenu = () => {
   width: 48px;
   height: 48px;
   border-radius: 16px;
-  background: linear-gradient(140deg, var(--color-accent) 0%, var(--color-teal) 100%);
+  background: linear-gradient(
+    140deg,
+    var(--color-accent) 0%,
+    var(--color-teal) 100%
+  );
   display: grid;
   place-items: center;
   color: #fff;
@@ -147,42 +170,49 @@ const toggleMenu = () => {
   color: var(--color-ink-muted);
 }
 
-.user-card {
+.header-user {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 14px;
-  background: rgba(209, 143, 59, 0.08);
-  border-radius: 16px;
-  margin-bottom: 24px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0,0,0,0.05);
+  cursor: pointer;
 }
 
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+.header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: rgba(31, 111, 109, 0.2);
   display: grid;
   place-items: center;
   font-weight: 700;
   color: var(--color-teal);
   overflow: hidden;
+  font-size: 14px;
 }
 
-.avatar img {
+.header-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.user-card strong {
-  display: block;
+.header-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.header-info strong {
   font-size: 14px;
 }
 
-.user-card small {
-  color: var(--color-ink-muted);
+.header-info small {
   font-size: 12px;
+  color: var(--color-ink-muted);
 }
 
 .nav-menu {
@@ -199,8 +229,24 @@ const toggleMenu = () => {
   gap: 12px;
 }
 
+.sidebar__footer .el-button {
+  width: 100%;
+  justify-content: center;
+  height: 40px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.sidebar__footer .el-button + .el-button {
+  margin-left: 0;
+}
+
 .content {
   padding: 32px 40px 40px;
+  min-width: 0;
 }
 
 .topbar {
@@ -236,6 +282,8 @@ const toggleMenu = () => {
   padding: 24px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft);
+  min-width: 0;
+  min-height: calc(100vh - 200px);
 }
 
 @media (max-width: 960px) {

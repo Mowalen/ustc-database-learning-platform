@@ -3,6 +3,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.routers import get_current_active_user
+from app.core.security import verify_password, get_password_hash
 from app.crud.crud_user import user as crud_user
 from app.models.user import User
 from app.schemas.user import UserResponse, UserUpdate
@@ -16,22 +17,38 @@ async def read_user_me(
 ) -> Any:
     return current_user
 
+@router.post("/verify-password")
+async def verify_user_password(
+    password: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    if not verify_password(password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
+    return {"message": "Password verified"}
+
 @router.put("/me", response_model=UserResponse)
 async def update_user_me(
     *,
     db: AsyncSession = Depends(get_db),
     password: str = Body(None),
     full_name: str = Body(None),
-    email: str = Body(None),
+    avatar_url: str = Body(None),
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    current_user_data = jsonable_encoder(current_user)
-    user_in = UserUpdate(**current_user_data)
-    if password is not None:
-        user_in.password = password
+    # Update full_name
     if full_name is not None:
-        user_in.full_name = full_name
-    if email is not None:
-        user_in.email = email
-    user = await crud_user.update(db, db_obj=current_user, obj_in=user_in)
-    return user
+        current_user.full_name = full_name
+    
+    # Update password (hash it first)
+    if password is not None:
+        current_user.password_hash = get_password_hash(password)
+    
+    # Update avatar_url
+    if avatar_url is not None:
+        current_user.avatar_url = avatar_url
+
+    
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user

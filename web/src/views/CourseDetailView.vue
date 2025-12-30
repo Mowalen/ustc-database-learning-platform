@@ -1,14 +1,15 @@
 <template>
   <div class="course-detail" v-loading="loading">
     <div class="course-banner">
-      <div>
+      <el-tag class="course-banner__category" effect="light">
+        {{ course?.category?.name || "未分类" }}
+      </el-tag>
+      <div class="course-banner__content">
         <h2>{{ course?.title }}</h2>
         <p>{{ course?.description || "暂无课程简介" }}</p>
       </div>
-      <div class="course-banner__actions">
-        <el-tag effect="light">{{ course?.category?.name || "未分类" }}</el-tag>
+      <div class="course-banner__actions" v-if="isStudent">
         <el-button
-          v-if="isStudent"
           :type="isEnrolled ? 'danger' : 'success'"
           @click="toggleEnroll"
         >
@@ -21,107 +22,320 @@
       <el-tab-pane label="章节内容" name="sections">
         <div class="section-header">
           <p>课程章节与学习资源一览。</p>
-          <el-button v-if="isTeacher" type="primary" @click="openSectionDialog()">
+          <el-button v-if="isCourseOwner" type="primary" @click="openSectionDialog()">
             新建章节
           </el-button>
         </div>
-        <el-table :data="sections" style="width: 100%">
-          <el-table-column prop="order_index" label="序号" width="80" />
-          <el-table-column prop="title" label="章节标题" />
-          <el-table-column prop="content" label="内容摘要" />
-          <el-table-column label="资源">
-            <template #default="scope">
-              <div class="link-group">
-                <a v-if="scope.row.material_url" :href="scope.row.material_url" target="_blank">课件</a>
-                <a v-if="scope.row.video_url" :href="scope.row.video_url" target="_blank">视频</a>
-                <span v-if="!scope.row.material_url && !scope.row.video_url">暂无</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="isTeacher" label="操作" width="160">
-            <template #default="scope">
-              <el-button size="small" @click="openSectionDialog(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" plain @click="deleteSection(scope.row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="sections-list table-wrap">
+          <el-table
+            :data="sectionTree"
+            row-key="unique_key"
+            :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+            default-expand-all
+            style="width: 100%"
+          >
+            <el-table-column label="章节号" min-width="80">
+              <template #default="scope">
+                <span v-if="scope.row.type === 'section'">{{ scope.row.order_index }}</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="章节标题" min-width="200">
+               <template #default="scope">
+                 <div class="tree-title-cell">
+                   <template v-if="scope.row.type === 'section'">
+                     <span>{{ scope.row.title }}</span>
+                   </template>
+                   <template v-else-if="scope.row.type === 'video'">
+                     <el-icon class="tree-icon video-icon"><VideoPlay /></el-icon>
+                     <span>{{ scope.row.title }}</span>
+                   </template>
+                   <template v-else-if="scope.row.type === 'material'">
+                     <el-icon class="tree-icon material-icon"><Folder /></el-icon>
+                     <span>{{ scope.row.title }}</span>
+                   </template>
+                 </div>
+               </template>
+            </el-table-column>
+
+            <el-table-column label="内容摘要" min-width="250">
+              <template #default="scope">
+                <div v-if="scope.row.type === 'section'" class="truncate-text" :title="scope.row.content">
+                  {{ scope.row.content || '-' }}
+                </div>
+                <div v-else class="status-text">
+                  <el-tag v-if="scope.row.url" type="success" size="small" effect="plain">已上传</el-tag>
+                  <el-tag v-else type="info" size="small" effect="plain">暂无</el-tag>
+                </div>
+              </template>
+            </el-table-column>
+
+            <el-table-column label="操作" min-width="180">
+              <template #default="scope">
+                <template v-if="scope.row.type === 'section'">
+                  <el-button size="small" @click="viewSection(scope.row.raw)">详情</el-button>
+                  <el-button v-if="isCourseOwner" size="small" @click="openSectionDialog(scope.row.raw)">编辑</el-button>
+                  <el-button v-if="isCourseOwner" size="small" type="danger" plain @click="deleteSection(scope.row.raw)">删除</el-button>
+                </template>
+                <template v-else>
+                  <el-button 
+                    v-if="scope.row.type === 'video' && scope.row.url" 
+                    size="small" 
+                    type="primary" 
+                    plain
+                    @click="openVideo(scope.row.url)"
+                  >
+                    播放
+                  </el-button>
+                  <el-button 
+                    v-if="scope.row.type === 'material' && scope.row.url" 
+                    size="small" 
+                    type="primary" 
+                    plain
+                    @click="downloadMaterial(scope.row.url)"
+                  >
+                    下载
+                  </el-button>
+                </template>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
 
-      <el-tab-pane label="作业与考试" name="tasks">
+      <el-tab-pane label="作业" name="assignments">
         <div class="section-header">
-          <p>按课程发布作业与考试，支持提交与评分。</p>
-          <el-button v-if="isTeacher" type="primary" @click="openTaskDialog">
-            发布任务
+          <p>课程作业列表与提交情况。</p>
+          <el-button v-if="isCourseOwner" type="primary" @click="openTaskDialog('assignment')">
+            发布作业
           </el-button>
         </div>
-        <el-table :data="tasks" style="width: 100%">
-          <el-table-column prop="title" label="标题" />
-          <el-table-column prop="type" label="类型" width="120">
-            <template #default="scope">
-              {{ formatTaskType(scope.row.type) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="deadline" label="截止时间">
-            <template #default="scope">
-              {{ formatDate(scope.row.deadline) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200">
-            <template #default="scope">
-              <el-button size="small" @click="viewTask(scope.row)">查看</el-button>
-              <el-button
-                v-if="isStudent"
-                size="small"
-                type="success"
-                plain
-                @click="openSubmit(scope.row)"
-              >
-                提交
-              </el-button>
-              <el-button
-                v-if="isTeacher"
-                size="small"
-                type="primary"
-                plain
-                @click="openSubmissions(scope.row)"
-              >
-                查看提交
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="table-wrap">
+          <el-table :data="assignments" style="width: 100%">
+            <el-table-column align="left" header-align="left" prop="title" label="标题" min-width="200" />
+            <el-table-column align="left" header-align="left" label="附件" min-width="120">
+              <template #default="scope">
+                <el-button
+                  v-if="scope.row.file_url"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openTaskFile(scope.row.file_url)"
+                >
+                  查看
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column align="left" header-align="left" prop="deadline" label="截止时间" min-width="180">
+              <template #default="scope">
+                {{ formatDate(scope.row.deadline) }}
+              </template>
+            </el-table-column>
+            <el-table-column align="left" header-align="left" label="操作" min-width="320">
+              <template #default="scope">
+                <el-button
+                  v-if="isStudent"
+                  size="small"
+                  type="success"
+                  plain
+                  :disabled="checkOverdue(scope.row.deadline)"
+                  @click="openSubmit(scope.row)"
+                >
+                  {{ getSubmissionForTask(scope.row.id) ? '重新提交' : '提交' }}
+                </el-button>
+                <template v-if="isStudent && getSubmissionForTask(scope.row.id)">
+                    <el-button 
+                        size="small" 
+                        type="primary" 
+                        plain 
+                        v-if="getSubmissionForTask(scope.row.id)?.file_url"
+                        @click="openTaskFile(getSubmissionForTask(scope.row.id)?.file_url!)"
+                    >
+                        查看提交附件
+                    </el-button>
+                     <el-button 
+                        size="small" 
+                        type="info" 
+                        plain
+                        @click="viewSubmissionDetails(getSubmissionForTask(scope.row.id)!)"
+                    >
+                        查看详情
+                    </el-button>
+                </template>
+
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  @click="openEditTask(scope.row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openSubmissions(scope.row)"
+                >
+                  查看提交
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="danger"
+                  plain
+                  @click="deleteTask(scope.row)"
+                >
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
 
-      <el-tab-pane v-if="isTeacher" label="学生名单" name="students">
-        <el-table :data="students" style="width: 100%">
-          <el-table-column prop="student.id" label="学生 ID" width="90" />
-          <el-table-column prop="student.username" label="用户名" />
-          <el-table-column prop="student.full_name" label="姓名" />
-          <el-table-column label="状态">
-            <template #default="scope">
-              {{ scope.row.status === "active" ? "在读" : "退课" }}
-            </template>
-          </el-table-column>
-        </el-table>
+      <el-tab-pane label="考试" name="exams">
+        <div class="section-header">
+          <p>课程考试安排与评分。</p>
+          <el-button v-if="isCourseOwner" type="primary" @click="openTaskDialog('exam')">
+            发布考试
+          </el-button>
+        </div>
+        <div class="table-wrap">
+          <el-table :data="exams" style="width: 100%">
+            <el-table-column align="left" header-align="left" prop="title" label="标题" min-width="200" />
+            <el-table-column align="left" header-align="left" label="附件" min-width="120">
+              <template #default="scope">
+                <el-button
+                  v-if="scope.row.file_url"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openTaskFile(scope.row.file_url)"
+                >
+                  查看
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column align="left" header-align="left" prop="deadline" label="截止时间" min-width="180">
+              <template #default="scope">
+                {{ formatDate(scope.row.deadline) }}
+              </template>
+            </el-table-column>
+            <el-table-column align="left" header-align="left" label="操作" min-width="320">
+              <template #default="scope">
+                <el-button
+                  v-if="isStudent"
+                  size="small"
+                  type="success"
+                  plain
+                  :disabled="checkOverdue(scope.row.deadline)"
+                  @click="openSubmit(scope.row)"
+                >
+                  {{ getSubmissionForTask(scope.row.id) ? '重新提交' : '提交' }}
+                </el-button>
+                <template v-if="isStudent && getSubmissionForTask(scope.row.id)">
+                    <el-button 
+                        size="small" 
+                        type="primary" 
+                        plain 
+                        v-if="getSubmissionForTask(scope.row.id)?.file_url"
+                        @click="openTaskFile(getSubmissionForTask(scope.row.id)?.file_url!)"
+                    >
+                        查看提交附件
+                    </el-button>
+                     <el-button 
+                        size="small" 
+                        type="info" 
+                        plain
+                        @click="viewSubmissionDetails(getSubmissionForTask(scope.row.id)!)"
+                    >
+                        查看详情
+                    </el-button>
+                </template>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  @click="openEditTask(scope.row)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="primary"
+                  plain
+                  @click="openSubmissions(scope.row)"
+                >
+                  查看提交
+                </el-button>
+                <el-button
+                  v-if="isCourseOwner"
+                  size="small"
+                  type="danger"
+                  plain
+                  @click="deleteTask(scope.row)"
+                >
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane v-if="isCourseOwner" label="学生名单" name="students">
+        <div class="table-wrap">
+          <el-table :data="students" style="width: 100%">
+            <el-table-column prop="student.id" label="学生 ID" min-width="100" />
+            <el-table-column prop="student.username" label="用户名" min-width="150" />
+            <el-table-column prop="student.full_name" label="姓名" min-width="150" />
+            <el-table-column label="状态" min-width="100">
+              <template #default="scope">
+                {{ scope.row.status === "active" ? "在读" : "退课" }}
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </el-tab-pane>
     </el-tabs>
 
     <el-dialog v-model="sectionDialog" :title="sectionDialogTitle" width="520px">
       <el-form :model="sectionForm" label-position="top">
+        <el-form-item label="第几章">
+          <el-input v-model.number="sectionForm.order_index" type="number" placeholder="例如：1、2、3..." />
+        </el-form-item>
         <el-form-item label="章节标题">
           <el-input v-model="sectionForm.title" />
         </el-form-item>
         <el-form-item label="内容">
           <el-input v-model="sectionForm.content" type="textarea" />
         </el-form-item>
-        <el-form-item label="课件 URL">
-          <el-input v-model="sectionForm.material_url" />
+        <el-form-item label="上传课件">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleMaterialUpload"
+            accept=".ppt,.pptx,.pdf"
+          >
+            <el-button :loading="uploadingMaterial" type="primary" plain>
+              上传课件文件
+            </el-button>
+          </el-upload>
+          <span v-if="sectionForm.material_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
-        <el-form-item label="视频 URL">
-          <el-input v-model="sectionForm.video_url" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="sectionForm.order_index" :min="0" />
+        <el-form-item label="上传视频">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleVideoUpload"
+            accept="video/*"
+          >
+            <el-button :loading="uploadingVideo" type="primary" plain>
+              上传视频文件
+            </el-button>
+          </el-upload>
+          <span v-if="sectionForm.video_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -130,20 +344,55 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="taskDialog" title="发布任务" width="520px">
+    <el-dialog v-model="sectionInfoDialog" title="章节详情" width="600px">
+      <div class="section-detail">
+        <h3>{{ activeSection?.title }}</h3>
+        
+        <div class="section-detail__content">
+           <p v-if="activeSection?.content" style="white-space: pre-wrap;">{{ activeSection?.content }}</p>
+           <p v-else class="text-muted">暂无内容摘要</p>
+        </div>
+
+        <div class="section-detail__resources" v-if="activeSection?.material_url || activeSection?.video_url">
+          <h4>学习资源</h4>
+          <div class="resource-links">
+            <a v-if="activeSection?.material_url" :href="activeSection?.material_url" target="_blank" class="resource-item">
+              <el-icon><Document /></el-icon>
+              <span>课件资料</span>
+            </a>
+            <a v-if="activeSection?.video_url" :href="activeSection?.video_url" target="_blank" class="resource-item">
+               <el-icon><VideoPlay /></el-icon>
+               <span>教学视频</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="sectionInfoDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="taskDialog" :title="editingTaskId ? '编辑任务' : '发布任务'" width="520px">
       <el-form :model="taskForm" label-position="top">
         <el-form-item label="标题">
           <el-input v-model="taskForm.title" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item label="任务说明（可选）">
           <el-input v-model="taskForm.description" type="textarea" />
         </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="taskForm.type" placeholder="选择类型">
-            <el-option label="作业" value="assignment" />
-            <el-option label="考试" value="exam" />
-          </el-select>
+        <el-form-item label="上传任务文件">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleTaskFileUpload"
+            accept=".pdf"
+          >
+            <el-button :loading="uploadingTaskFile" type="primary" plain>
+              上传 PDF
+            </el-button>
+          </el-upload>
+          <span v-if="taskForm.file_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
+
         <el-form-item label="截止时间">
           <el-date-picker
             v-model="taskForm.deadline"
@@ -151,6 +400,8 @@
             placeholder="选择时间"
             format="YYYY-MM-DD HH:mm"
             value-format="YYYY-MM-DDTHH:mm:ss"
+            :disabled-date="disablePastDate"
+            :disabled-time="disablePastTime"
           />
         </el-form-item>
       </el-form>
@@ -162,11 +413,17 @@
 
     <el-dialog v-model="submitDialog" title="提交任务" width="520px">
       <el-form :model="submitForm" label-position="top">
-        <el-form-item label="答案内容">
-          <el-input v-model="submitForm.answer_text" type="textarea" />
-        </el-form-item>
-        <el-form-item label="附件 URL">
-          <el-input v-model="submitForm.file_url" placeholder="可选" />
+        <el-form-item label="上传答案 PDF">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleSubmissionUpload"
+            accept=".pdf"
+          >
+            <el-button :loading="uploadingSubmissionFile" type="primary" plain>
+              上传 PDF
+            </el-button>
+          </el-upload>
+          <span v-if="submitForm.file_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -179,6 +436,10 @@
       <div class="task-detail">
         <h3>{{ activeTask?.title }}</h3>
         <p>{{ activeTask?.description || "暂无描述" }}</p>
+        <div class="task-detail__resource">
+          <a v-if="activeTask?.file_url" :href="activeTask?.file_url" target="_blank">查看附件</a>
+          <span v-else class="text-muted">暂无附件</span>
+        </div>
         <div class="task-detail__meta">
           <span>类型：{{ formatTaskType(activeTask?.type) }}</span>
           <span>截止：{{ formatDate(activeTask?.deadline) }}</span>
@@ -189,32 +450,37 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="submissionsDialog" title="提交记录" width="760px">
-      <el-table :data="submissions" style="width: 100%">
-        <el-table-column prop="student.username" label="学生" width="160" />
-        <el-table-column prop="answer_text" label="答案" />
-        <el-table-column label="附件" width="140">
-          <template #default="scope">
-            <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
-            <span v-else>-</span>
-          </template>
+    <el-dialog v-model="submissionsDialog" title="提交记录" width="90%">
+        <el-table :data="sortedSubmissions" style="width: 100%" @sort-change="handleSubmissionSort">
+          <el-table-column align="left" header-align="left" prop="student.username" label="学生" min-width="120" />
+          <el-table-column align="left" header-align="left" label="附件" min-width="100">
+            <template #default="scope">
+              <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
+              <span v-else>-</span>
+            </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="90">
+        <el-table-column
+          align="left" header-align="left"
+          prop="score"
+          label="分数"
+          min-width="80"
+          sortable="custom"
+        >
           <template #default="scope">
             {{ scope.row.score ?? "-" }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column align="left" header-align="left" label="状态" min-width="100">
           <template #default="scope">
             {{ formatStatus(scope.row.status) }}
           </template>
         </el-table-column>
-        <el-table-column label="评分时间" width="160">
+        <el-table-column align="left" header-align="left" label="评分时间" min-width="160">
           <template #default="scope">
             {{ formatDate(scope.row.graded_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column align="left" header-align="left" label="操作" min-width="100">
           <template #default="scope">
             <el-button size="small" @click="openGrade(scope.row)">评分</el-button>
           </template>
@@ -239,22 +505,55 @@
         <el-button type="primary" @click="submitGrade">提交评分</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="videoPlayerDialog" title="视频播放" width="800px" destroy-on-close>
+      <div class="video-container">
+        <video 
+          v-if="playVideoUrl" 
+          :src="playVideoUrl" 
+          controls 
+          autoplay 
+          style="width: 100%; max-height: 600px;"
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </el-dialog>
+
+    <el-dialog v-model="submissionDetailDialog" title="提交详情" width="520px">
+      <div class="submission-detail" v-if="activeSubmissionDetail">
+         <p><strong>状态：</strong> {{ formatStatus(activeSubmissionDetail.status) }}</p>
+
+         <p><strong>分数：</strong> {{ activeSubmissionDetail.score ?? '暂无' }}</p>
+         <p><strong>评语：</strong> {{ activeSubmissionDetail.feedback || '暂无' }}</p>
+         <div v-if="activeSubmissionDetail.file_url" style="margin-top: 10px;">
+             <strong>提交附件：</strong>
+             <el-button type="primary" link @click="openTaskFile(activeSubmissionDetail?.file_url!)">
+                点击查看
+             </el-button>
+         </div>
+      </div>
+      <template #footer>
+        <el-button @click="submissionDetailDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox, type UploadRequestOptions } from "element-plus";
 import {
   courseApi,
   sectionApi,
   taskApi,
   enrollmentApi,
+  uploadApi,
 } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
-import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent } from "@/types";
-import { formatDate, formatStatus, formatTaskType } from "@/utils/format";
+import type { Course, Section, Task, EnrollmentWithStudent, SubmissionWithStudent, Submission } from "@/types";
+import { ArrowRight, Document, VideoPlay, Folder, Download, CaretRight } from "@element-plus/icons-vue";
+import { translateTaskDetail } from "@/utils/taskMessages";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -265,20 +564,86 @@ const course = ref<Course | null>(null);
 const sections = ref<Section[]>([]);
 const tasks = ref<Task[]>([]);
 const students = ref<EnrollmentWithStudent[]>([]);
+const mySubmissions = ref<Submission[]>([]);
 const activeTab = ref("sections");
+
+const sectionTree = computed(() => {
+  return sections.value.map(section => ({
+    id: section.id,
+    unique_key: `section_${section.id}`,
+    title: section.title,
+    order_index: section.order_index,
+    content: section.content,
+    type: 'section',
+    raw: section,
+    children: [
+      {
+        unique_key: `video_${section.id}`,
+        title: '教学视频',
+        type: 'video',
+        url: section.video_url,
+        parent: section
+      },
+      {
+        unique_key: `material_${section.id}`,
+        title: '课件资料',
+        type: 'material',
+        url: section.material_url,
+        parent: section
+      }
+    ]
+  }));
+});
+
+const assignments = computed(() => tasks.value.filter(t => t.type === 'assignment'));
+const exams = computed(() => tasks.value.filter(t => t.type === 'exam'));
+const sortedSubmissions = computed(() => {
+  const list = submissions.value.slice();
+  if (submissionSort.value.prop !== "score" || !submissionSort.value.order) {
+    return list;
+  }
+  const isAscending = submissionSort.value.order === "ascending";
+  return list.sort((a, b) => {
+    const aScore = a.score;
+    const bScore = b.score;
+    const aEmpty = aScore === null || aScore === undefined;
+    const bEmpty = bScore === null || bScore === undefined;
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    const diff = Number(aScore) - Number(bScore);
+    return isAscending ? diff : -diff;
+  });
+});
 
 const sectionDialog = ref(false);
 const sectionDialogTitle = ref("新建章节");
 const editingSectionId = ref<number | null>(null);
 
 const taskDialog = ref(false);
+const editingTaskId = ref<number | null>(null);
+const originalTaskDeadline = ref("");
 const submitDialog = ref(false);
 const taskInfoDialog = ref(false);
 const activeTask = ref<Task | null>(null);
 const submissionsDialog = ref(false);
 const submissions = ref<SubmissionWithStudent[]>([]);
+const submissionSort = ref<{ prop: string; order: "ascending" | "descending" | null }>({
+  prop: "",
+  order: null,
+});
 const gradeDialog = ref(false);
 const activeSubmissionId = ref<number | null>(null);
+
+const videoPlayerDialog = ref(false);
+const playVideoUrl = ref("");
+
+const sectionInfoDialog = ref(false);
+const activeSection = ref<Section | null>(null);
+const uploadingMaterial = ref(false);
+const uploadingVideo = ref(false);
+const uploadingTaskFile = ref(false);
+const uploadingSubmissionFile = ref(false);
 
 const sectionForm = reactive({
   title: "",
@@ -291,12 +656,44 @@ const sectionForm = reactive({
 const taskForm = reactive({
   title: "",
   description: "",
+  file_url: "",
   type: "assignment" as "assignment" | "exam",
   deadline: "",
 });
 
+const disablePastDate = (date: Date) => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return date.getTime() < startOfToday.getTime();
+};
+
+const disablePastTime = (date: Date) => {
+  const now = new Date();
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  if (!isToday) {
+    return {
+      disabledHours: () => [],
+      disabledMinutes: () => [],
+      disabledSeconds: () => [],
+    };
+  }
+
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  return {
+    disabledHours: () => Array.from({ length: currentHour }, (_, i) => i),
+    disabledMinutes: (hour: number) =>
+      hour === currentHour
+        ? Array.from({ length: currentMinute + 1 }, (_, i) => i)
+        : [],
+    disabledSeconds: () => [],
+  };
+};
+
 const submitForm = reactive({
-  answer_text: "",
   file_url: "",
 });
 const gradeForm = reactive({
@@ -304,9 +701,31 @@ const gradeForm = reactive({
   feedback: "",
 });
 
+const submissionDetailDialog = ref(false);
+const activeSubmissionDetail = ref<Submission | null>(null);
+
+const checkOverdue = (deadline: string | undefined): boolean => {
+    if (!deadline) return false;
+    const deadlineTime = new Date(deadline).getTime();
+    if (Number.isNaN(deadlineTime)) return false;
+    return deadlineTime < Date.now();
+};
+
+const getSubmissionForTask = (taskId: number) => {
+  return mySubmissions.value.find((s) => s.task_id === taskId);
+};
+
+const viewSubmissionDetails = (submission: Submission) => {
+  activeSubmissionDetail.value = submission;
+  submissionDetailDialog.value = true;
+};
+
 const isTeacher = computed(() => auth.roleId === 2);
 const isStudent = computed(() => auth.roleId === 1);
 const isEnrolled = ref(false);
+const isCourseOwner = computed(
+  () => isTeacher.value && course.value?.teacher_id === auth.user?.id
+);
 
 const loadData = async () => {
   loading.value = true;
@@ -316,15 +735,19 @@ const loadData = async () => {
       (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)
     );
     tasks.value = await taskApi.listTasks(courseId);
-    if (isTeacher.value) {
+    if (isCourseOwner.value) {
       students.value = await enrollmentApi.courseStudents(courseId);
     }
     if (isStudent.value && auth.user) {
       const enrollments = await enrollmentApi.myEnrollments(auth.user.id);
       isEnrolled.value = enrollments.some((enroll) => enroll.course_id === courseId);
+      mySubmissions.value = await taskApi.getMySubmissions(courseId);
     }
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "加载课程信息失败");
+    const detail = error?.response?.data?.detail;
+    if (detail !== "Course not found or inactive") {
+      ElMessage.error(detail || "加载课程信息失败");
+    }
   } finally {
     loading.value = false;
   }
@@ -349,7 +772,7 @@ const openSectionDialog = (section?: Section) => {
       content: "",
       material_url: "",
       video_url: "",
-      order_index: 0,
+      order_index: 1,
     });
   }
   sectionDialog.value = true;
@@ -396,31 +819,175 @@ const deleteSection = async (section: Section) => {
   }
 };
 
-const openTaskDialog = () => {
+const viewSection = (section: Section) => {
+  activeSection.value = section;
+  sectionInfoDialog.value = true;
+};
+
+const openVideo = (url: string) => {
+  playVideoUrl.value = url;
+  videoPlayerDialog.value = true;
+};
+
+const downloadMaterial = (url: string) => {
+  window.open(url, '_blank');
+};
+
+const openTaskFile = (url: string) => {
+  window.open(url, "_blank");
+};
+
+const handleMaterialUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingMaterial.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    sectionForm.material_url = data.url;
+    ElMessage.success("课件上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "课件上传失败");
+  } finally {
+    uploadingMaterial.value = false;
+  }
+};
+
+const handleVideoUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingVideo.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    sectionForm.video_url = data.url;
+    ElMessage.success("视频上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "视频上传失败");
+  } finally {
+    uploadingVideo.value = false;
+  }
+};
+
+const handleTaskFileUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingTaskFile.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    taskForm.file_url = data.url;
+    ElMessage.success("任务文件上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "任务文件上传失败");
+  } finally {
+    uploadingTaskFile.value = false;
+  }
+};
+
+const handleSubmissionUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingSubmissionFile.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    submitForm.file_url = data.url;
+    ElMessage.success("作业附件上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "附件上传失败");
+  } finally {
+    uploadingSubmissionFile.value = false;
+  }
+};
+
+const openTaskDialog = (type: "assignment" | "exam" = "assignment") => {
+  editingTaskId.value = null;
+  originalTaskDeadline.value = "";
   Object.assign(taskForm, {
     title: "",
     description: "",
-    type: "assignment",
+    file_url: "",
+    type: type,
     deadline: "",
+  });
+  taskDialog.value = true;
+};
+
+const openEditTask = (task: Task) => {
+  editingTaskId.value = task.id;
+  originalTaskDeadline.value = task.deadline || "";
+  Object.assign(taskForm, {
+    title: task.title,
+    description: task.description || "",
+    file_url: task.file_url || "",
+    type: task.type,
+    deadline: task.deadline || "",
   });
   taskDialog.value = true;
 };
 
 const saveTask = async () => {
   if (!auth.user) return;
+  if (taskForm.deadline) {
+    const deadlineTime = new Date(taskForm.deadline).getTime();
+    const nowTime = Date.now();
+    if (Number.isNaN(deadlineTime)) {
+      ElMessage.warning("截止时间格式不正确");
+      return;
+    }
+    if (deadlineTime <= nowTime) {
+      const isEditing = Boolean(editingTaskId.value);
+      if (!isEditing || taskForm.deadline !== originalTaskDeadline.value) {
+        ElMessage.warning("截止时间需晚于当前时间");
+        return;
+      }
+    }
+  }
   try {
-    await taskApi.createTask(courseId, {
-      teacher_id: auth.user.id,
-      title: taskForm.title,
-      description: taskForm.description || undefined,
-      type: taskForm.type,
-      deadline: taskForm.deadline || undefined,
-    });
-    ElMessage.success("任务已发布");
+    if (editingTaskId.value) {
+      // 编辑现有任务
+      await taskApi.updateTask(editingTaskId.value, {
+        title: taskForm.title,
+        description: taskForm.description || undefined,
+        file_url: taskForm.file_url || undefined,
+        type: taskForm.type,
+        deadline: taskForm.deadline || undefined,
+      });
+      ElMessage.success("任务已更新");
+    } else {
+      // 创建新任务
+      await taskApi.createTask(courseId, {
+        teacher_id: auth.user.id,
+        title: taskForm.title,
+        description: taskForm.description || undefined,
+        file_url: taskForm.file_url || undefined,
+        type: taskForm.type,
+        deadline: taskForm.deadline || undefined,
+      });
+      ElMessage.success("任务已发布");
+    }
     taskDialog.value = false;
     tasks.value = await taskApi.listTasks(courseId);
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "发布任务失败");
+    ElMessage.error(error?.response?.data?.detail || (editingTaskId.value ? "更新任务失败" : "发布任务失败"));
+  }
+};
+
+const deleteTask = async (task: Task) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除作业"${task.title}"吗？`, "提示", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    await taskApi.deleteTask(task.id);
+    ElMessage.success("作业已删除");
+    tasks.value = await taskApi.listTasks(courseId);
+  } catch (error: any) {
+    if (error !== "cancel") {
+      ElMessage.error(error?.response?.data?.detail || "删除失败");
+    }
   }
 };
 
@@ -432,11 +999,22 @@ const viewTask = (task: Task) => {
 const openSubmissions = async (task: Task) => {
   try {
     activeTask.value = task;
+    submissionSort.value = { prop: "", order: null };
     submissions.value = await taskApi.listSubmissions(task.id);
     submissionsDialog.value = true;
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.detail || "加载提交记录失败");
   }
+};
+
+const handleSubmissionSort = (payload: {
+  prop: string;
+  order: "ascending" | "descending" | null;
+}) => {
+  submissionSort.value = {
+    prop: payload.prop || "",
+    order: payload.order,
+  };
 };
 
 const openGrade = (submission: SubmissionWithStudent) => {
@@ -465,22 +1043,27 @@ const submitGrade = async () => {
 
 const openSubmit = (task: Task) => {
   activeTask.value = task;
-  Object.assign(submitForm, { answer_text: "", file_url: "" });
+  Object.assign(submitForm, { file_url: "" });
   submitDialog.value = true;
 };
 
 const submitTask = async () => {
   if (!auth.user || !activeTask.value) return;
+  if (!submitForm.file_url) {
+    ElMessage.warning("请先上传 PDF 附件");
+    return;
+  }
   try {
     await taskApi.submitTask(activeTask.value.id, {
       student_id: auth.user.id,
-      answer_text: submitForm.answer_text || undefined,
       file_url: submitForm.file_url || undefined,
     });
     ElMessage.success("提交成功");
     submitDialog.value = false;
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "提交失败");
+    const detail = error?.response?.data?.detail;
+    const translated = translateTaskDetail(typeof detail === "string" ? detail : "");
+    ElMessage.error(translated || detail || "提交失败");
   }
 };
 
@@ -501,6 +1084,30 @@ const toggleEnroll = async () => {
   }
 };
 
+const formatDate = (date: string | null | undefined) => {
+  if (!date) return "-";
+  return new Date(date).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatTaskType = (type: string | undefined) => {
+  if (type === "assignment") return "作业";
+  if (type === "exam") return "考试";
+  return type || "-";
+};
+
+const formatStatus = (status: string | undefined) => {
+  if (status === "submitted") return "已提交";
+  if (status === "graded") return "已批改";
+  if (status === "late") return "迟交";
+  return status || "-";
+};
+
 onMounted(() => {
   loadData().catch(() => undefined);
 });
@@ -510,32 +1117,58 @@ onMounted(() => {
 .course-detail {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .course-banner {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16px;
-  align-items: center;
-  padding: 20px;
+  padding: 32px 28px;
   background: rgba(209, 143, 59, 0.12);
   border-radius: 18px;
+  min-width: 0;
 }
 
-.course-banner h2 {
+.course-banner__category {
+  position: absolute;
+  top: 20px;
+  right: 28px;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(31, 111, 109, 0.15), rgba(209, 143, 59, 0.15));
+  color: var(--color-teal);
+  border: 1px solid rgba(31, 111, 109, 0.2);
+  font-size: 14px;
+  padding: 6px 16px;
+  z-index: 1;
+}
+
+.course-banner__content {
+  min-width: 0;
+  padding-right: 120px;
+}
+
+.course-banner__content h2 {
   font-family: var(--font-display);
-  font-size: 24px;
-  margin-bottom: 6px;
+  font-size: 28px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
 }
 
-.course-banner p {
+.course-banner__content p {
   color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .course-banner__actions {
   display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: flex-start;
 }
 
 .section-header {
@@ -547,6 +1180,25 @@ onMounted(() => {
 
 .section-header p {
   color: var(--color-ink-muted);
+}
+
+.course-detail :deep(.el-tabs) {
+  width: 100%;
+  min-width: 0;
+}
+
+.course-detail :deep(.el-tabs__content),
+.course-detail :deep(.el-tab-pane) {
+  min-width: 0;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-wrap :deep(.el-table) {
+  width: 100%;
 }
 
 .link-group {
@@ -576,4 +1228,189 @@ onMounted(() => {
   font-size: 13px;
   color: var(--color-ink-muted);
 }
+
+
+.section-detail h3 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: var(--color-ink);
+}
+
+.sections-list {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+}
+
+.section-index {
+  font-weight: 600;
+  margin-right: 12px;
+  color: var(--color-teal);
+  background: rgba(31, 111, 109, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.section-name {
+  font-weight: 600;
+  color: var(--color-ink);
+  font-size: 15px;
+}
+
+.section-actions {
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.section-content {
+  padding: 10px 16px;
+  background: #fafafa;
+}
+
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.resource-row:last-child {
+  margin-bottom: 0;
+}
+
+.resource-row.clickable {
+  cursor: pointer;
+}
+
+.resource-row.clickable:hover {
+  background: #f0fdfc;
+  transform: translateX(4px);
+}
+
+.resource-icon {
+  font-size: 20px;
+  color: #999;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 50%;
+}
+
+.resource-icon.video-icon {
+  color: #fff;
+  background: #409eff; /* Or teal */
+}
+
+.resource-icon.pdf-icon {
+  color: #fff;
+  background: #e6a23c;
+}
+
+.resource-info {
+  flex: 1;
+}
+
+.resource-label {
+  display: block;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 2px;
+}
+
+.resource-sub {
+  font-size: 12px;
+  color: #999;
+}
+
+.resource-desc {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+}
+
+.action-icon {
+  color: #ccc;
+}
+
+
+
+.section-detail__content {
+  margin-bottom: 24px;
+  line-height: 1.6;
+  color: var(--color-ink);
+}
+
+.section-detail__resources h4 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--color-ink);
+}
+
+.resource-links {
+  display: flex;
+  gap: 16px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(31, 111, 109, 0.05);
+  border-radius: 8px;
+  color: var(--color-teal);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.resource-item:hover {
+  background: rgba(31, 111, 109, 0.1);
+  transform: translateY(-2px);
+}
+
+.text-muted {
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+.tree-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tree-icon {
+  font-size: 16px;
+  color: #999;
+}
+
+.tree-icon.video-icon {
+  color: #409eff;
+}
+
+.tree-icon.material-icon {
+  color: #e6a23c;
+}
+
+.truncate-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-muted);
+}
 </style>
+```

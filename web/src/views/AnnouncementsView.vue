@@ -1,10 +1,6 @@
 <template>
   <div class="announcements">
     <div class="header">
-      <div>
-        <h2>公告看板</h2>
-        <p>查看系统公告与课程通知。</p>
-      </div>
       <div class="header__actions">
         <el-switch v-if="isAdmin" v-model="includeInactive" active-text="包含停用" />
         <el-button @click="loadAnnouncements">刷新</el-button>
@@ -114,18 +110,10 @@ onMounted(() => {
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.header h2 {
-  font-family: var(--font-display);
-  margin-bottom: 6px;
-}
-
-.header p {
-  color: var(--color-ink-muted);
+  margin-bottom: 16px;
 }
 
 .header__actions {

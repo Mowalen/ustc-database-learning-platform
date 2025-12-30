@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from app.schemas.users import UserOut
 
 class CourseCategoryBase(BaseModel):
     name: str
@@ -28,6 +29,7 @@ class CourseCreate(CourseBase):
 
 class CourseUpdate(CourseBase):
     title: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class Course(CourseBase):
     id: int
@@ -36,6 +38,8 @@ class Course(CourseBase):
     updated_at: Optional[datetime] = None
     is_active: bool
     category: Optional[CourseCategory] = None
+    teacher: Optional[UserOut] = None
+    teacher_name: Optional[str] = None
 
     class Config:
         from_attributes = True

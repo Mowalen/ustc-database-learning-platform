@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from app.core.time_utils import get_now
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -39,6 +40,7 @@ async def create_task(session, course_id: int, payload: TaskCreate) -> Task:
         teacher_id=payload.teacher_id,
         title=payload.title,
         description=payload.description,
+        file_url=payload.file_url,
         type=payload.type,
         deadline=payload.deadline,
     )
@@ -68,10 +70,10 @@ async def submit_task(session, task_id: int, payload: SubmissionCreate) -> Submi
     task = await get_task(session, task_id)
     await _get_student_enrollment(session, task.course_id, payload.student_id)
 
-    now = datetime.now(timezone.utc)
+    now = get_now()
     deadline = task.deadline
     if deadline and deadline.tzinfo is None:
-        deadline = deadline.replace(tzinfo=timezone.utc)
+        deadline = deadline.replace(tzinfo=timezone.utc) # keeping this as fallback just in case, or should be APP_TIMEZONE?
     status_value = SubmissionStatus.SUBMITTED
     if deadline and now > deadline:
         status_value = SubmissionStatus.LATE
@@ -118,7 +120,8 @@ async def apply_grade(session, submission: Submission, payload: GradeUpdate) -> 
     submission.score = payload.score
     submission.feedback = payload.feedback
     submission.status = payload.status or SubmissionStatus.GRADED
-    submission.graded_at = datetime.now(timezone.utc)
+    submission.graded_at = get_now()
+
 
     await session.commit()
     await session.refresh(submission)
@@ -134,3 +137,40 @@ async def list_submissions(session, task_id: int) -> list[Submission]:
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def update_task(session, task_id: int, payload) -> Task:
+    task = await get_task(session, task_id)
+    
+    if payload.title is not None:
+        task.title = payload.title
+    if payload.description is not None:
+        task.description = payload.description
+    if payload.file_url is not None:
+        task.file_url = payload.file_url
+    if payload.type is not None:
+        task.type = payload.type
+    if payload.deadline is not None:
+        task.deadline = payload.deadline
+    
+    await session.commit()
+    await session.refresh(task)
+    return task
+
+
+async def delete_task(session, task_id: int) -> Task:
+    task = await get_task(session, task_id)
+    await session.delete(task)
+    await session.commit()
+    return task
+
+
+async def list_student_submissions(session, course_id: int, student_id: int) -> list[Submission]:
+    stmt = (
+        select(Submission)
+        .join(Task)
+        .where(Task.course_id == course_id, Submission.student_id == student_id)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+

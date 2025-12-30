@@ -16,7 +16,7 @@ import type {
 } from "@/types";
 
 const baseURL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://114.214.188.108:9000/api/v1";
 
 const api: AxiosInstance = axios.create({
   baseURL,
@@ -51,6 +51,24 @@ export const authApi = {
     const { data } = await api.post<User>("/auth/register", payload);
     return data;
   },
+  async requestPasswordReset(email: string): Promise<{ message: string; code?: string }> {
+    const { data } = await api.post<{ message: string; code?: string }>(
+      "/auth/password-reset/request",
+      { email }
+    );
+    return data;
+  },
+  async confirmPasswordReset(payload: {
+    email: string;
+    code: string;
+    new_password: string;
+  }): Promise<{ message: string }> {
+    const { data } = await api.post<{ message: string }>(
+      "/auth/password-reset/confirm",
+      payload
+    );
+    return data;
+  },
 };
 
 export const userApi = {
@@ -58,10 +76,14 @@ export const userApi = {
     const { data } = await api.get<User>("/users/me");
     return data;
   },
+  async verifyPassword(password: string): Promise<boolean> {
+    await api.post("/users/verify-password", { password });
+    return true;
+  },
   async updateMe(payload: {
     full_name?: string;
-    email?: string;
     password?: string;
+    avatar_url?: string;
   }): Promise<User> {
     const { data } = await api.put<User>("/users/me", payload);
     return data;
@@ -174,6 +196,7 @@ export const taskApi = {
     teacher_id: number;
     title: string;
     description?: string;
+    file_url?: string;
     type: "assignment" | "exam";
     deadline?: string;
   }): Promise<Task> {
@@ -190,6 +213,19 @@ export const taskApi = {
   async getTask(taskId: number): Promise<Task> {
     const { data } = await api.get<Task>(`/tasks/${taskId}`);
     return data;
+  },
+  async updateTask(taskId: number, payload: {
+    title?: string;
+    description?: string;
+    file_url?: string;
+    type?: "assignment" | "exam";
+    deadline?: string;
+  }): Promise<Task> {
+    const { data } = await api.put<Task>(`/tasks/${taskId}`, payload);
+    return data;
+  },
+  async deleteTask(taskId: number): Promise<void> {
+    await api.delete(`/tasks/${taskId}`);
   },
   async submitTask(taskId: number, payload: {
     student_id: number;
@@ -219,6 +255,10 @@ export const taskApi = {
     );
     return data;
   },
+  async getMySubmissions(courseId: number): Promise<Submission[]> {
+    const { data } = await api.get<Submission[]>(`/courses/${courseId}/my-submissions`);
+    return data;
+  },
 };
 
 export const scoreApi = {
@@ -237,6 +277,14 @@ export const scoreApi = {
       responseType: "text",
     });
     return data;
+  },
+  async getTeacherPendingGradingCount(): Promise<number> {
+    const { data } = await api.get<{ count: number }>("/teacher/pending-grading-count");
+    return data.count;
+  },
+  async getStudentPendingTasksCount(): Promise<number> {
+    const { data } = await api.get<{ count: number }>("/student/pending-tasks-count");
+    return data.count;
   },
 };
 
@@ -300,6 +348,39 @@ export const adminApi = {
     const { data } = await api.post<Announcement>(
       "/admin/announcements",
       payload
+    );
+    return data;
+  },
+  async updateAnnouncement(
+    id: number,
+    payload: {
+      title?: string;
+      content?: string;
+      is_active?: boolean;
+    }
+  ): Promise<Announcement> {
+    const { data } = await api.put<Announcement>(
+      `/admin/announcements/${id}`,
+      payload
+    );
+    return data;
+  },
+  async deleteAnnouncement(id: number): Promise<Announcement> {
+    const { data } = await api.delete<Announcement>(`/admin/announcements/${id}`);
+    return data;
+  },
+};
+
+export const uploadApi = {
+  async uploadFile(file: File): Promise<{ url: string; filename: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data } = await api.post<{ url: string; filename: string }>(
+      "/uploads",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
     );
     return data;
   },

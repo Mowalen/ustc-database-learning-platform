@@ -28,7 +28,10 @@ class Task(Base):
     teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String(100))
     description: Mapped[Optional[str]] = mapped_column(Text)
-    type: Mapped[TaskType] = mapped_column(Enum(TaskType, name="task_type"))
+    file_url: Mapped[Optional[str]] = mapped_column(String(255))
+    type: Mapped[TaskType] = mapped_column(
+        Enum(TaskType, name="task_type", values_callable=lambda x: [e.value for e in x])
+    )
     deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

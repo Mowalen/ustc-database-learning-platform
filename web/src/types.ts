@@ -46,6 +46,8 @@ export interface Course {
   updated_at?: string | null;
   is_active: boolean;
   category?: CourseCategory | null;
+  teacher?: User | null;
+  teacher_name?: string | null;
 }
 
 export interface Section {
@@ -82,6 +84,7 @@ export interface Task {
   teacher_id: number;
   title: string;
   description?: string | null;
+  file_url?: string | null;
   type: TaskType;
   deadline?: string | null;
   created_at: string;

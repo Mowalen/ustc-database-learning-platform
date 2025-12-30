@@ -1,27 +1,23 @@
 <template>
   <div class="tasks-center">
     <div class="header">
-      <div>
-        <h2>作业与考试</h2>
-        <p>集中查看任务安排与提交记录。</p>
-      </div>
       <el-button @click="loadTasks">刷新</el-button>
     </div>
 
     <el-table :data="tasks" style="width: 100%">
-      <el-table-column prop="courseTitle" label="课程" />
-      <el-table-column prop="title" label="任务标题" />
-      <el-table-column label="类型" width="120">
+      <el-table-column prop="courseTitle" label="课程" min-width="150" />
+      <el-table-column prop="title" label="任务标题" min-width="200" />
+      <el-table-column label="类型" min-width="100">
         <template #default="scope">
           {{ formatTaskType(scope.row.type) }}
         </template>
       </el-table-column>
-      <el-table-column label="截止时间" width="180">
+      <el-table-column label="截止时间" min-width="180">
         <template #default="scope">
           {{ formatDate(scope.row.deadline) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="160">
+      <el-table-column label="操作" min-width="180">
         <template #default="scope">
           <el-button size="small" @click="viewTask(scope.row)">详情</el-button>
           <el-button
@@ -62,11 +58,17 @@
 
     <el-dialog v-model="submitDialog" title="提交任务" width="520px">
       <el-form :model="submitForm" label-position="top">
-        <el-form-item label="答案内容">
-          <el-input v-model="submitForm.answer_text" type="textarea" />
-        </el-form-item>
-        <el-form-item label="附件 URL">
-          <el-input v-model="submitForm.file_url" placeholder="可选" />
+        <el-form-item label="上传答案 PDF">
+          <el-upload
+            :show-file-list="false"
+            :http-request="handleSubmissionUpload"
+            accept=".pdf"
+          >
+            <el-button :loading="uploadingSubmissionFile" type="primary" plain>
+              上传 PDF
+            </el-button>
+          </el-upload>
+          <span v-if="submitForm.file_url" style="margin-left: 10px; color: #67c23a;">已上传</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -77,30 +79,29 @@
 
     <el-dialog v-model="submissionsDialog" title="提交记录" width="760px">
       <el-table :data="submissions" style="width: 100%">
-        <el-table-column prop="student.username" label="学生" width="160" />
-        <el-table-column prop="answer_text" label="答案" />
-        <el-table-column label="附件" width="140">
+        <el-table-column prop="student.username" label="学生" min-width="120" />
+        <el-table-column label="附件" min-width="100">
           <template #default="scope">
             <a v-if="scope.row.file_url" :href="scope.row.file_url" target="_blank">查看</a>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="score" label="分数" width="90">
+        <el-table-column prop="score" label="分数" min-width="80">
           <template #default="scope">
             {{ scope.row.score ?? "-" }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" min-width="100">
           <template #default="scope">
             {{ formatStatus(scope.row.status) }}
           </template>
         </el-table-column>
-        <el-table-column label="评分时间" width="160">
+        <el-table-column label="评分时间" min-width="160">
           <template #default="scope">
             {{ formatDate(scope.row.graded_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" min-width="100">
           <template #default="scope">
             <el-button size="small" @click="openGrade(scope.row)">评分</el-button>
           </template>
@@ -130,10 +131,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
-import { courseApi, enrollmentApi, taskApi } from "@/services/api";
+import { ElMessage, type UploadRequestOptions } from "element-plus";
+import { courseApi, enrollmentApi, taskApi, uploadApi } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import { formatDate, formatStatus, formatTaskType } from "@/utils/format";
+import { translateTaskDetail } from "@/utils/taskMessages";
 import type { SubmissionWithStudent, Task } from "@/types";
 
 interface TaskRow extends Task {
@@ -149,9 +151,9 @@ const submissionsDialog = ref(false);
 const submissions = ref<SubmissionWithStudent[]>([]);
 const gradeDialog = ref(false);
 const activeSubmissionId = ref<number | null>(null);
+const uploadingSubmissionFile = ref(false);
 
 const submitForm = reactive({
-  answer_text: "",
   file_url: "",
 });
 
@@ -202,9 +204,25 @@ const viewTask = (task: TaskRow) => {
   taskDialog.value = true;
 };
 
+const handleSubmissionUpload = async (options: UploadRequestOptions) => {
+  const file = options.file as File;
+  uploadingSubmissionFile.value = true;
+  try {
+    const data = await uploadApi.uploadFile(file);
+    submitForm.file_url = data.url;
+    ElMessage.success("作业附件上传成功");
+    options.onSuccess?.(data);
+  } catch (error: any) {
+    options.onError?.(error);
+    ElMessage.error(error?.response?.data?.detail || "附件上传失败");
+  } finally {
+    uploadingSubmissionFile.value = false;
+  }
+};
+
 const openSubmit = (task: TaskRow) => {
   activeTask.value = task;
-  Object.assign(submitForm, { answer_text: "", file_url: "" });
+  Object.assign(submitForm, { file_url: "" });
   submitDialog.value = true;
 };
 
@@ -244,16 +262,21 @@ const submitGrade = async () => {
 
 const submitTask = async () => {
   if (!auth.user || !activeTask.value) return;
+  if (!submitForm.file_url) {
+    ElMessage.warning("请先上传 PDF 附件");
+    return;
+  }
   try {
     await taskApi.submitTask(activeTask.value.id, {
       student_id: auth.user.id,
-      answer_text: submitForm.answer_text || undefined,
       file_url: submitForm.file_url || undefined,
     });
     ElMessage.success("提交成功");
     submitDialog.value = false;
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.detail || "提交失败");
+    const detail = error?.response?.data?.detail;
+    const translated = translateTaskDetail(typeof detail === "string" ? detail : "");
+    ElMessage.error(translated || detail || "提交失败");
   }
 };
 
@@ -270,17 +293,9 @@ onMounted(() => {
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-}
-
-.header h2 {
-  font-family: var(--font-display);
-  margin-bottom: 6px;
-}
-
-.header p {
-  color: var(--color-ink-muted);
+  margin-bottom: 16px;
 }
 
 .task-detail h3 {

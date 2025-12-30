@@ -1,20 +1,8 @@
 import { defineStore } from "pinia";
 import { ElMessage } from "element-plus";
 import { authApi, userApi } from "@/services/api";
+import { formatValidationError, translateAuthDetail } from "@/utils/authMessages";
 import type { User } from "@/types";
-
-const formatValidationError = (detail: any) => {
-  if (!Array.isArray(detail)) {
-    return "";
-  }
-  const messages = detail.map((item) => {
-    const loc = Array.isArray(item?.loc) ? item.loc : [];
-    const field = loc.slice(1).join(".") || "field";
-    const msg = item?.msg || "invalid value";
-    return `${field}: ${msg}`;
-  });
-  return messages.join("；");
-};
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -72,7 +60,9 @@ export const useAuthStore = defineStore("auth", {
         ElMessage.success("登录成功，欢迎回来");
         return true;
       } catch (error: any) {
-        ElMessage.error(error?.response?.data?.detail || "登录失败，请检查账号或密码");
+        const detail = error?.response?.data?.detail;
+        const translated = translateAuthDetail(typeof detail === "string" ? detail : "");
+        ElMessage.error(translated || "登录失败，请检查账号或密码");
         return false;
       } finally {
         this.loading = false;
@@ -93,7 +83,8 @@ export const useAuthStore = defineStore("auth", {
       } catch (error: any) {
         const detail = error?.response?.data?.detail;
         const formatted = formatValidationError(detail);
-        ElMessage.error(formatted || detail || "注册失败，请检查输入");
+        const translated = translateAuthDetail(typeof detail === "string" ? detail : "");
+        ElMessage.error(formatted || translated || "注册失败，请检查输入");
         return false;
       } finally {
         this.loading = false;
@@ -106,10 +97,23 @@ export const useAuthStore = defineStore("auth", {
         ElMessage.error("获取用户信息失败");
       }
     },
+    async verifyPassword(password: string) {
+      this.loading = true;
+      try {
+        await userApi.verifyPassword(password);
+        ElMessage.success("密码验证成功");
+        return true;
+      } catch (error: any) {
+        ElMessage.error(error?.response?.data?.detail || "密码验证失败");
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
     async updateProfile(payload: {
       full_name?: string;
-      email?: string;
       password?: string;
+      avatar_url?: string;
     }) {
       this.loading = true;
       try {

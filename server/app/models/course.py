@@ -22,6 +22,8 @@ class Course(Base):
     title = Column(String(100), index=True, nullable=False)
     description = Column(Text)
     cover_url = Column(String(255))
+    material_url = Column(String(255))
+    video_url = Column(String(255))
     category_id = Column(Integer, ForeignKey("course_categories.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -32,3 +34,9 @@ class Course(Base):
     sections = relationship("CourseSection", back_populates="course", cascade="all, delete-orphan")
     enrollments = relationship("CourseEnrollment", back_populates="course", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="course", cascade="all, delete-orphan")
+
+    @property
+    def teacher_name(self) -> str | None:
+        if not self.teacher:
+            return None
+        return self.teacher.full_name or self.teacher.username

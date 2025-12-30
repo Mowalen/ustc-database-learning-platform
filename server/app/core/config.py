@@ -19,6 +19,18 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Email / SMTP Configuration
+    SMTP_HOST: str = "smtp.gmail.com"  # 或使用 smtp.qq.com, smtp.163.com 等
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""  # 发件邮箱地址
+    SMTP_PASSWORD: str = ""  # 邮箱授权码（不是邮箱密码）
+    SMTP_USE_TLS: bool = True
+    FROM_EMAIL: str = ""  # 发件人邮箱（通常与 SMTP_USER 相同）
+    FROM_NAME: str = "USTC数据库学习平台"
+    
+    # Development mode - skip actual email sending
+    DEV_MODE: bool = True  # 开发模式：不实际发送邮件，直接返回验证码
+    
     class Config:
         case_sensitive = True
         # 从 .env 文件读取配置

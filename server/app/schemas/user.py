@@ -12,11 +12,20 @@ class UserBase(BaseModel):
     is_active: Optional[bool] = True
 
 class UserCreate(UserBase):
+    email: EmailStr
+    full_name: str
     password: str
     role_id: int
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
+    is_active: Optional[bool] = None
     password: Optional[str] = None
+    role_id: Optional[int] = None
 
 class UserResponse(UserBase):
     id: int

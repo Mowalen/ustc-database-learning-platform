@@ -3,7 +3,7 @@ from sqlalchemy import select
 
 from app.core.security import get_password_hash
 from app.models import Announcement, Course, Role, User
-from app.schemas.announcements import AnnouncementCreate
+from app.schemas.announcements import AnnouncementCreate, AnnouncementUpdate
 from app.schemas.user import UserCreate, UserUpdate
 
 
@@ -123,3 +123,41 @@ async def list_users(
         stmt = stmt.where(User.is_active.is_(is_active))
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def update_announcement(session, announcement_id: int, payload: AnnouncementUpdate) -> Announcement:
+    announcement = await session.get(Announcement, announcement_id)
+    if not announcement:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Announcement not found")
+
+    if payload.title is not None:
+        announcement.title = payload.title
+    if payload.content is not None:
+        announcement.content = payload.content
+    if payload.is_active is not None:
+        announcement.is_active = payload.is_active
+
+    await session.commit()
+    await session.refresh(announcement)
+    return announcement
+
+
+async def delete_announcement(session, announcement_id: int) -> Announcement:
+    # We can choose to soft delete (deactivate) or hard delete.
+    # Given other entities use deactivate, we can stick to that, or simple hard delete if less critical.
+    # For now, let's reuse "is_active=False" conceptually as delete for user view, but admin might want hard delete.
+    # User request was "delete" (usually), and previous code showed "include_inactive".
+    # Let's support hard delete since announcements are simple, OR soft delete.
+    # The previous code in list_announcements handles include_inactive.
+    # So we probably should have deactivate. But "delete" is what is asked usually.
+    # Let's do HARD delete for announcements to keep it clean, or just deactivate?
+    # Actually, announcements are often ephemeral.
+    # Let's do soft delete first (deactivate) to matching pattern.
+    announcement = await session.get(Announcement, announcement_id)
+    if not announcement:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Announcement not found")
+
+    # Hard delete
+    await session.delete(announcement)
+    await session.commit()
+    return announcement

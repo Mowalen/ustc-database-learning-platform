@@ -6,6 +6,7 @@ from .enrollment import CourseEnrollment, EnrollmentStatus
 from .task import Task, TaskType
 from .submission import Submission, SubmissionStatus
 from .announcement import Announcement
+from .resource import Resource
 
 __all__ = [
     "Base",
@@ -20,4 +21,5 @@ __all__ = [
     "Submission",
     "SubmissionStatus",
     "Announcement",
+    "Resource",
 ]

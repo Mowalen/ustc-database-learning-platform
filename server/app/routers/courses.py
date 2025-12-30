@@ -39,8 +39,9 @@ async def create_course(
     db_obj = crud_course.model(**obj_in_data)
     db.add(db_obj)
     await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
+
+    # Fetch the full object with relations to avoid missing greenlet error
+    return await crud_course.get(db, id=db_obj.id)
 
 @router.get("/{id}", response_model=Course)
 async def read_course(

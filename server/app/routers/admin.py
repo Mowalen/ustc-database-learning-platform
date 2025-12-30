@@ -5,7 +5,7 @@ from app.crud import admin as crud_admin
 from app.db.session import get_db
 from app.models.user import User
 from app.routers import get_current_active_user, require_roles
-from app.schemas.announcements import AnnouncementCreate, AnnouncementOut
+from app.schemas.announcements import AnnouncementCreate, AnnouncementOut, AnnouncementUpdate
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -82,3 +82,22 @@ async def list_announcements(
     if include_inactive and current_user.role_id != 3:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return await crud_admin.list_announcements(db, include_inactive)
+
+
+@router.put("/announcements/{announcement_id}", response_model=AnnouncementOut)
+async def update_announcement(
+    announcement_id: int,
+    payload: AnnouncementUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(3)),
+):
+    return await crud_admin.update_announcement(db, announcement_id, payload)
+
+
+@router.delete("/announcements/{announcement_id}", response_model=AnnouncementOut)
+async def delete_announcement(
+    announcement_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(3)),
+):
+    return await crud_admin.delete_announcement(db, announcement_id)

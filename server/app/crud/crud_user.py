@@ -11,6 +11,10 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         result = await db.execute(select(User).filter(User.username == username))
         return result.scalars().first()
 
+    async def get_by_email(self, db: AsyncSession, *, email: str) -> Optional[User]:
+        result = await db.execute(select(User).filter(User.email == email))
+        return result.scalars().first()
+
     async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> User:
         db_obj = User(
             username=obj_in.username,
@@ -27,6 +31,8 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
 
     async def authenticate(self, db: AsyncSession, *, username: str, password: str) -> Optional[User]:
         user = await self.get_by_username(db, username=username)
+        if not user:
+            user = await self.get_by_email(db, email=username)
         if not user:
             return None
         if not verify_password(password, user.password_hash):

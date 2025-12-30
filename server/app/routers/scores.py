@@ -24,6 +24,29 @@ async def my_scores(
     return await crud_scores.get_scores_for_student(db, student_id)
 
 
+@router.get("/teacher/pending-grading-count")
+async def get_pending_grading_count(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.role_id != 2:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a teacher")
+    count = await crud_scores.get_teacher_pending_grading_count(db, current_user.id)
+    return {"count": count}
+
+
+@router.get("/student/pending-tasks-count")
+async def get_student_pending_tasks_count(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.role_id != 1:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a student")
+        
+    count = await crud_scores.get_student_pending_task_count(db, current_user.id)
+    return {"count": count}
+
+
 @router.get("/courses/{course_id}/scores", response_model=list[ScoreOut])
 async def course_scores(
     course_id: int,
